@@ -3,6 +3,7 @@
 import {
   FormEvent,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -55,6 +56,25 @@ export default function VehicleWorkModal({
   onClose: () => void;
   onChanged?: () => void;
 }) {
+  /*
+   * Vehicles with ownership status
+   * Wishlist must not appear in the
+   * Work page vehicle selector.
+   */
+  const selectableVehicles =
+    useMemo(
+      () =>
+        vehicles.filter(
+          (item) =>
+            String(
+              item.ownershipStatus ||
+                ""
+            ).toLowerCase() !==
+            "wishlist"
+        ),
+      [vehicles]
+    );
+
   const [items, setItems] =
     useState<WorkItem[]>([]);
 
@@ -85,11 +105,12 @@ export default function VehicleWorkModal({
    * If popup was opened from a vehicle
    * card, use that supplied vehicle.
    *
-   * Otherwise find it from all vehicles.
+   * Otherwise only search selectable
+   * non-Wishlist vehicles.
    */
   const selectedVehicle =
     vehicle ??
-    vehicles.find(
+    selectableVehicles.find(
       (item) =>
         String(item.id) ===
         String(selectedVehicleId)
@@ -293,12 +314,36 @@ export default function VehicleWorkModal({
       return;
     }
 
+    /*
+     * Only allow vehicles from the
+     * non-Wishlist selectable list.
+     */
     const selected =
-      vehicles.find(
+      selectableVehicles.find(
         (item) =>
           String(item.id) ===
           nextVehicleId
       );
+
+    /*
+     * Extra safety in case an invalid /
+     * Wishlist vehicle ID somehow reaches
+     * the change handler.
+     */
+    if (!selected) {
+      setSelectedVehicleId("");
+      setItems([]);
+
+      setForm({
+        ...emptyForm,
+      });
+
+      setError(
+        "This vehicle is not available for workshop work."
+      );
+
+      return;
+    }
 
     /*
      * Start fresh Add form
@@ -604,8 +649,6 @@ export default function VehicleWorkModal({
               + Add Work
             </button>
 
-            {/* COUNT */}
-
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
                 Work Items
@@ -616,31 +659,20 @@ export default function VehicleWorkModal({
               </span>
             </div>
 
-            {/* NO VEHICLE */}
-
             {!selectedVehicleId ? (
               <div className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
                 Select a vehicle to view its work items.
               </div>
             ) : loading ? (
-              /*
-               * LOADING
-               */
               <div className="py-8 text-center text-sm text-gray-500">
                 Loading work items...
               </div>
             ) : items.length ===
               0 ? (
-              /*
-               * EMPTY
-               */
               <div className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
                 No work items yet.
               </div>
             ) : (
-              /*
-               * WORK LIST
-               */
               <div className="space-y-2">
                 {items.map(
                   (item) => {
@@ -726,8 +758,6 @@ export default function VehicleWorkModal({
                 handleSave
               }
             >
-              {/* FORM HEADER */}
-
               <div className="mb-5 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">
@@ -791,7 +821,7 @@ export default function VehicleWorkModal({
                           Select vehicle...
                         </option>
 
-                        {vehicles
+                        {selectableVehicles
                           .slice()
                           .sort(
                             (
@@ -1274,11 +1304,8 @@ function PriorityBadge({
     string
   > = {
     1: "bg-red-100 text-red-700",
-
     2: "bg-orange-100 text-orange-700",
-
     3: "bg-gray-100 text-gray-600",
-
     4: "bg-gray-50 text-gray-400",
   };
 
