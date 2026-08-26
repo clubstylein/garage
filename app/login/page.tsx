@@ -6,7 +6,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* LOGIN CARD */}
 
-        <div className="rounded-2xl border border-[#dfe2e6] bg-white p-8">
+<div className="rounded-2xl border border-[#dfe2e6] bg-white p-8 text-[#1d2228]">
           {/* LOGO */}
 
           <div className="flex justify-center">
@@ -20,8 +20,8 @@ export default function LoginPage() {
           {/* TITLE */}
 
           <div className="mt-7 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Garage Login
+<h1 className="text-2xl font-semibold tracking-tight text-[#1d2228]">
+                Garage Login
             </h1>
 
             <p className="mt-2 text-sm text-gray-500">
