@@ -2,12 +2,11 @@
   "name": "garage",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "node .next/standalone/server.js",
-    "lint": "eslint"
-  },
+"scripts": {
+  "dev": "next dev",
+  "build": "next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
+  "start": "node .next/standalone/server.js"
+},
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "next": "16.3.2",
