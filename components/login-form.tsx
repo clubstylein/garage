@@ -114,7 +114,7 @@ export default function LoginForm() {
               e.target.value
             )
           }
-          className="w-full rounded-lg border border-[#d8dce1] bg-white px-4 py-3 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]"
+          className="w-full rounded-lg border border-[#d8dce1] bg-white px-4 py-3 text-sm text-[#1d2228] placeholder:text-gray-300 outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]"
         />
       </div>
 
@@ -140,7 +140,7 @@ export default function LoginForm() {
               e.target.value
             )
           }
-          className="w-full rounded-lg border border-[#d8dce1] bg-white px-4 py-3 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]"
+          className="w-full rounded-lg border border-[#d8dce1] bg-white px-4 py-3 text-sm text-[#1d2228] placeholder:text-gray-300 outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]"
         />
       </div>
 
