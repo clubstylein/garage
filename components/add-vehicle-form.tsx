@@ -5,13 +5,20 @@ import {
   FormEvent,
   ReactNode,
   useEffect,
+  useMemo,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+
+import {
+  useRouter,
+} from "next/navigation";
+
 import Link from "next/link";
+
 import {
   SpecTemplate,
   SpecificationRow,
+  VehicleCustomer,
 } from "@/lib/mock-data";
 
 type AiSpecification = {
@@ -19,7 +26,10 @@ type AiSpecification = {
   specification: string;
   value: string;
   unit: string;
-  confidence: "high" | "medium" | "low";
+  confidence:
+    | "high"
+    | "medium"
+    | "low";
 };
 
 type AiSource = {
@@ -35,111 +45,373 @@ type AiVehicleResult = {
   year: number;
   asset_type: string;
   engine_platform: string;
-  engine_cc: number | null;
-  confidence: "high" | "medium" | "low";
+  engine_cc:
+    | number
+    | null;
+  confidence:
+    | "high"
+    | "medium"
+    | "low";
   identification_notes: string;
   warnings: string[];
-  specifications: AiSpecification[];
+  specifications:
+    AiSpecification[];
   sources?: AiSource[];
   researched_at?: string;
 };
 
 export default function AddVehicleForm({
   templates,
+  customers,
 }: {
-  templates: SpecTemplate[];
+  templates:
+    SpecTemplate[];
+
+  customers:
+    VehicleCustomer[];
 }) {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  /*
-   * VEHICLE FIELDS THAT AI CAN CHANGE
-   */
+  /* =======================================================
+     VEHICLE
+     ======================================================= */
 
-  const [assetType, setAssetType] =
-    useState("Motorcycle");
+  const [
+    assetType,
+    setAssetType,
+  ] =
+    useState(
+      "Motorcycle"
+    );
 
-  const [make, setMake] =
+  const [
+    make,
+    setMake,
+  ] =
     useState("");
 
-  const [model, setModel] =
+  const [
+    model,
+    setModel,
+  ] =
     useState("");
 
-  const [variant, setVariant] =
+  const [
+    variant,
+    setVariant,
+  ] =
     useState("");
 
-  const [year, setYear] =
+  const [
+    year,
+    setYear,
+  ] =
     useState("");
 
-  const [location, setLocation] =
+  const [
+    location,
+    setLocation,
+  ] =
     useState("");
 
-  const [enginePlatform, setEnginePlatform] =
+  const [
+    enginePlatform,
+    setEnginePlatform,
+  ] =
     useState("");
 
-  const [engineCc, setEngineCc] =
+  const [
+    engineCc,
+    setEngineCc,
+  ] =
     useState("");
 
-  /*
-   * SPECIFICATIONS
-   */
+  /* =======================================================
+     OWNERSHIP / CUSTOMER
+     ======================================================= */
 
-  const [selectedTemplate, setSelectedTemplate] =
-    useState("");
+  const [
+    ownershipStatus,
+    setOwnershipStatus,
+  ] =
+    useState<
+      "Owned" |
+      "Wishlist"
+    >(
+      "Owned"
+    );
 
-  const [specifications, setSpecifications] =
-    useState<SpecificationRow[]>([]);
-
-  /*
-   * IMAGE
-   */
-
-  const [coverImage, setCoverImage] =
-    useState<File | null>(null);
-
-  const [coverPreview, setCoverPreview] =
-    useState("");
-
-  /*
-   * AI
-   */
-
-  const [researching, setResearching] =
-    useState(false);
-
-  const [aiResult, setAiResult] =
-    useState<AiVehicleResult | null>(null);
-
-  /*
-   * FORM
-   */
-
-  const [saving, setSaving] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  /*
-   * CLEAN IMAGE PREVIEW
-   */
-
-  useEffect(() => {
-    return () => {
-      if (coverPreview) {
-        URL.revokeObjectURL(
-          coverPreview
+  const clubStyleCustomer =
+    useMemo(
+      () => {
+        return (
+          customers.find(
+            (
+              customer
+            ) =>
+              String(
+                customer.customerCode ??
+                  ""
+              )
+                .trim()
+                .toUpperCase() ===
+              "CLUBSTYLE"
+          ) ??
+          customers.find(
+            (
+              customer
+            ) =>
+              String(
+                customer.category ??
+                  ""
+              )
+                .trim()
+                .toLowerCase() ===
+              "self-owned"
+          ) ??
+          null
         );
-      }
-    };
-  }, [coverPreview]);
+      },
+      [
+        customers,
+      ]
+    );
 
-  /*
-   * AI VEHICLE LOOKUP
-   */
+  const [
+    customerId,
+    setCustomerId,
+  ] =
+    useState(
+      clubStyleCustomer
+        ?.id ??
+        ""
+    );
+
+  const sortedCustomers =
+    useMemo(
+      () => {
+        return [
+          ...customers,
+        ].sort(
+          (
+            a,
+            b
+          ) => {
+            const categoryOrder: Record<
+              string,
+              number
+            > = {
+              "self-owned": 1,
+              vip: 2,
+              general: 3,
+            };
+
+            const categoryA =
+              String(
+                a.category ??
+                  ""
+              )
+                .trim()
+                .toLowerCase();
+
+            const categoryB =
+              String(
+                b.category ??
+                  ""
+              )
+                .trim()
+                .toLowerCase();
+
+            const orderA =
+              categoryOrder[
+                categoryA
+              ] ??
+              99;
+
+            const orderB =
+              categoryOrder[
+                categoryB
+              ] ??
+              99;
+
+            if (
+              orderA !==
+              orderB
+            ) {
+              return (
+                orderA -
+                orderB
+              );
+            }
+
+            return a.name.localeCompare(
+              b.name
+            );
+          }
+        );
+      },
+      [
+        customers,
+      ]
+    );
+
+  const selectedCustomer =
+    useMemo(
+      () =>
+        customers.find(
+          (
+            customer
+          ) =>
+            String(
+              customer.id
+            ) ===
+            String(
+              customerId
+            )
+        ) ??
+        null,
+      [
+        customers,
+        customerId,
+      ]
+    );
+
+  /* =======================================================
+     SPECIFICATIONS
+     ======================================================= */
+
+  const [
+    selectedTemplate,
+    setSelectedTemplate,
+  ] =
+    useState("");
+
+  const [
+    specifications,
+    setSpecifications,
+  ] =
+    useState<
+      SpecificationRow[]
+    >([]);
+
+  /* =======================================================
+     IMAGE
+     ======================================================= */
+
+  const [
+    coverImage,
+    setCoverImage,
+  ] =
+    useState<
+      File | null
+    >(null);
+
+  const [
+    coverPreview,
+    setCoverPreview,
+  ] =
+    useState("");
+
+  /* =======================================================
+     AI
+     ======================================================= */
+
+  const [
+    researching,
+    setResearching,
+  ] =
+    useState(false);
+
+  const [
+    aiResult,
+    setAiResult,
+  ] =
+    useState<
+      AiVehicleResult |
+      null
+    >(null);
+
+  /* =======================================================
+     FORM
+     ======================================================= */
+
+  const [
+    saving,
+    setSaving,
+  ] =
+    useState(false);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
+
+  /* =======================================================
+     CLEAN IMAGE PREVIEW
+     ======================================================= */
+
+  useEffect(
+    () => {
+      return () => {
+        if (
+          coverPreview
+        ) {
+          URL.revokeObjectURL(
+            coverPreview
+          );
+        }
+      };
+    },
+    [
+      coverPreview,
+    ]
+  );
+
+  /* =======================================================
+     OWNERSHIP CHANGE
+     ======================================================= */
+
+  function handleOwnershipChange(
+    value:
+      | "Owned"
+      | "Wishlist"
+  ) {
+    setOwnershipStatus(
+      value
+    );
+
+    if (
+      value ===
+      "Wishlist"
+    ) {
+      setCustomerId(
+        ""
+      );
+
+      return;
+    }
+
+    if (
+      !customerId &&
+      clubStyleCustomer
+    ) {
+      setCustomerId(
+        clubStyleCustomer.id
+      );
+    }
+  }
+
+  /* =======================================================
+     AI LOOKUP
+     ======================================================= */
 
   async function findVehicleDetails() {
     setError("");
-    setAiResult(null);
+    setAiResult(
+      null
+    );
 
     if (
       !make.trim() ||
@@ -149,40 +421,54 @@ export default function AddVehicleForm({
       setError(
         "Enter Make, Model and Year before searching for vehicle details."
       );
+
       return;
     }
 
     const yearNumber =
-      Number(year);
+      Number(
+        year
+      );
 
     if (
-      !Number.isFinite(yearNumber) ||
-      yearNumber < 1900 ||
-      yearNumber > 2100
+      !Number.isFinite(
+        yearNumber
+      ) ||
+      yearNumber <
+        1900 ||
+      yearNumber >
+        2100
     ) {
       setError(
         "Please enter a valid model year."
       );
+
       return;
     }
 
-    setResearching(true);
+    setResearching(
+      true
+    );
 
     try {
-      /*
-       * If the user selected a template,
-       * send those exact fields to AI.
-       */
       const selected =
         templates.find(
-          (template) =>
-            String(template.id) ===
-            String(selectedTemplate)
+          (
+            template
+          ) =>
+            String(
+              template.id
+            ) ===
+            String(
+              selectedTemplate
+            )
         );
 
       const templateItems =
         selected?.items.map(
-          (item) => ({
+          (
+            item
+          ) => ({
             category:
               item.category,
 
@@ -195,44 +481,51 @@ export default function AddVehicleForm({
             required:
               item.required,
           })
-        ) ?? [];
+        ) ??
+        [];
 
       const response =
         await fetch(
           "/api/vehicle-lookup",
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
               "Content-Type":
                 "application/json",
             },
 
-            body: JSON.stringify({
-              make:
-                make.trim(),
+            body:
+              JSON.stringify(
+                {
+                  make:
+                    make.trim(),
 
-              model:
-                model.trim(),
+                  model:
+                    model.trim(),
 
-              year:
-                yearNumber,
+                  year:
+                    yearNumber,
 
-              asset_type:
-                assetType,
+                  asset_type:
+                    assetType,
 
-              location:
-                location.trim(),
+                  location:
+                    location.trim(),
 
-              templateItems,
-            }),
+                  templateItems,
+                }
+              ),
           }
         );
 
       const result =
         await response.json();
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         throw new Error(
           result?.error ||
             "Unable to research vehicle."
@@ -240,30 +533,38 @@ export default function AddVehicleForm({
       }
 
       setAiResult(
-        result as AiVehicleResult
+        result as
+          AiVehicleResult
       );
-    } catch (err) {
+    } catch (
+      err
+    ) {
       console.error(
         "Vehicle research error:",
         err
       );
 
       setError(
-        err instanceof Error
+        err instanceof
+          Error
           ? err.message
           : "Unable to research vehicle."
       );
     } finally {
-      setResearching(false);
+      setResearching(
+        false
+      );
     }
   }
 
-  /*
-   * APPLY AI RESULT
-   */
+  /* =======================================================
+     APPLY AI RESULT
+     ======================================================= */
 
   function applyAiResult() {
-    if (!aiResult) {
+    if (
+      !aiResult
+    ) {
       return;
     }
 
@@ -273,24 +574,30 @@ export default function AddVehicleForm({
       setError(
         "The vehicle could not be identified confidently enough to apply the details."
       );
+
       return;
     }
 
     setMake(
-      aiResult.make || make
+      aiResult.make ||
+        make
     );
 
     setModel(
-      aiResult.model || model
+      aiResult.model ||
+        model
     );
 
     setVariant(
-      aiResult.variant || variant
+      aiResult.variant ||
+        variant
     );
 
     setYear(
       aiResult.year
-        ? String(aiResult.year)
+        ? String(
+            aiResult.year
+          )
         : year
     );
 
@@ -317,35 +624,36 @@ export default function AddVehicleForm({
       );
     }
 
-    /*
-     * AI specification results replace the
-     * current specification list.
-     *
-     * Empty values are kept visible so
-     * the user can manually complete them.
-     */
     if (
       Array.isArray(
         aiResult.specifications
       ) &&
-      aiResult.specifications
-        .length > 0
+      aiResult
+        .specifications
+        .length >
+        0
     ) {
       setSpecifications(
         aiResult.specifications.map(
-          (item, index) => ({
+          (
+            item,
+            index
+          ) => ({
             category:
-              item.category || "",
+              item.category ||
+              "",
 
             specification:
               item.specification ||
               "",
 
             value:
-              item.value || "",
+              item.value ||
+              "",
 
             unit:
-              item.unit || "",
+              item.unit ||
+              "",
 
             notes:
               item.confidence
@@ -353,44 +661,59 @@ export default function AddVehicleForm({
                 : "",
 
             sort:
-              index + 1,
+              index +
+              1,
           })
         )
       );
     }
 
     setError("");
-    setAiResult(null);
+    setAiResult(
+      null
+    );
   }
 
-  /*
-   * SAVE VEHICLE
-   */
+  /* =======================================================
+     SAVE VEHICLE
+     ======================================================= */
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    setSaving(true);
+    setSaving(
+      true
+    );
+
     setError("");
 
     try {
+      if (
+        ownershipStatus !==
+          "Wishlist" &&
+        !customerId
+      ) {
+        throw new Error(
+          "Please select a customer."
+        );
+      }
+
       const form =
         new FormData(
           event.currentTarget
         );
 
-      /*
-       * STEP 1
-       * Upload cover image first.
-       */
-
       let coverImageId:
         | string
-        | null = null;
+        | null =
+        null;
 
-      if (coverImage) {
+      if (
+        coverImage
+      ) {
         const imageForm =
           new FormData();
 
@@ -402,7 +725,9 @@ export default function AddVehicleForm({
         imageForm.append(
           "title",
           `${
-            form.get("name") ||
+            form.get(
+              "name"
+            ) ||
             "Vehicle"
           } Cover Image`
         );
@@ -411,8 +736,11 @@ export default function AddVehicleForm({
           await fetch(
             "/api/files",
             {
-              method: "POST",
-              body: imageForm,
+              method:
+                "POST",
+
+              body:
+                imageForm,
             }
           );
 
@@ -431,13 +759,15 @@ export default function AddVehicleForm({
           !uploadResponse.ok
         ) {
           throw new Error(
-            uploadResult?.error ||
+            uploadResult
+              ?.error ||
               "Unable to upload vehicle image"
           );
         }
 
         if (
-          !uploadResult?.id
+          !uploadResult
+            ?.id
         ) {
           throw new Error(
             "Vehicle image uploaded but no file ID was returned."
@@ -450,39 +780,43 @@ export default function AddVehicleForm({
           );
       }
 
-      /*
-       * STEP 2
-       * Build vehicle payload.
-       */
-
       const data = {
         ...Object.fromEntries(
           form.entries()
         ),
+
+        ownership_status:
+          ownershipStatus,
+
+        customer:
+          ownershipStatus ===
+          "Wishlist"
+            ? null
+            : customerId,
 
         cover_image:
           coverImageId,
 
         specifications:
           specifications.filter(
-            (item) =>
+            (
+              item
+            ) =>
               item.specification
-                .trim() !== "" &&
-              item.value.trim() !==
+                .trim() !==
+                "" &&
+              item.value
+                .trim() !==
                 ""
           ),
       };
-
-      /*
-       * STEP 3
-       * Save vehicle.
-       */
 
       const response =
         await fetch(
           "/api/vehicles",
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
               "Content-Type":
@@ -507,14 +841,18 @@ export default function AddVehicleForm({
         );
       }
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         throw new Error(
           result?.error ||
             "Unable to create vehicle"
         );
       }
 
-      if (!result?.id) {
+      if (
+        !result?.id
+      ) {
         throw new Error(
           "Vehicle was created but no vehicle ID was returned."
         );
@@ -525,39 +863,50 @@ export default function AddVehicleForm({
       );
 
       router.refresh();
-    } catch (err) {
+    } catch (
+      err
+    ) {
       console.error(
         "Add vehicle error:",
         err
       );
 
       setError(
-        err instanceof Error
+        err instanceof
+          Error
           ? err.message
           : "Unable to create vehicle"
       );
     } finally {
-      setSaving(false);
+      setSaving(
+        false
+      );
     }
   }
 
-  /*
-   * IMAGE
-   */
+  /* =======================================================
+     IMAGE
+     ======================================================= */
 
   function handleCoverImage(
-    event: ChangeEvent<HTMLInputElement>
+    event:
+      ChangeEvent<HTMLInputElement>
   ) {
     const file =
       event.target.files?.[0];
 
-    if (!file) return;
+    if (
+      !file
+    ) {
+      return;
+    }
 
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
+    const allowedTypes =
+      [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ];
 
     if (
       !allowedTypes.includes(
@@ -567,30 +916,39 @@ export default function AddVehicleForm({
       setError(
         "Only JPG, PNG and WebP images are supported."
       );
+
       return;
     }
 
     const maxSize =
-      10 * 1024 * 1024;
+      10 *
+      1024 *
+      1024;
 
     if (
-      file.size > maxSize
+      file.size >
+      maxSize
     ) {
       setError(
         "Vehicle image must be smaller than 10 MB."
       );
+
       return;
     }
 
     setError("");
 
-    if (coverPreview) {
+    if (
+      coverPreview
+    ) {
       URL.revokeObjectURL(
         coverPreview
       );
     }
 
-    setCoverImage(file);
+    setCoverImage(
+      file
+    );
 
     setCoverPreview(
       URL.createObjectURL(
@@ -600,43 +958,61 @@ export default function AddVehicleForm({
   }
 
   function removeCoverImage() {
-    if (coverPreview) {
+    if (
+      coverPreview
+    ) {
       URL.revokeObjectURL(
         coverPreview
       );
     }
 
-    setCoverImage(null);
-    setCoverPreview("");
+    setCoverImage(
+      null
+    );
+
+    setCoverPreview(
+      ""
+    );
   }
 
-  /*
-   * SPEC TEMPLATE
-   */
+  /* =======================================================
+     SPEC TEMPLATE
+     ======================================================= */
 
   function applyTemplate() {
     const template =
       templates.find(
-        (item) =>
-          String(item.id) ===
-          String(selectedTemplate)
+        (
+          item
+        ) =>
+          String(
+            item.id
+          ) ===
+          String(
+            selectedTemplate
+          )
       );
 
-    if (!template) {
+    if (
+      !template
+    ) {
       setError(
         "Specification template could not be found."
       );
+
       return;
     }
 
     if (
       !template.items ||
-      template.items.length ===
+      template.items
+        .length ===
         0
     ) {
       setError(
         `The "${template.name}" template does not contain any specification items.`
       );
+
       return;
     }
 
@@ -644,25 +1020,32 @@ export default function AddVehicleForm({
 
     setSpecifications(
       template.items.map(
-        (item, index) => ({
+        (
+          item,
+          index
+        ) => ({
           category:
-            item.category || "",
+            item.category ||
+            "",
 
           specification:
             item.specification ||
             "",
 
-          value: "",
+          value:
+            "",
 
           unit:
             item.defaultUnit ??
             "",
 
-          notes: "",
+          notes:
+            "",
 
           sort:
             item.sort ??
-            index + 1,
+            index +
+              1,
         })
       )
     );
@@ -670,47 +1053,79 @@ export default function AddVehicleForm({
 
   function addSpecification() {
     setSpecifications(
-      (current) => [
+      (
+        current
+      ) => [
         ...current,
 
         {
-          category: "",
-          specification: "",
-          value: "",
-          unit: "",
-          notes: "",
+          category:
+            "",
+
+          specification:
+            "",
+
+          value:
+            "",
+
+          unit:
+            "",
+
+          notes:
+            "",
+
           sort:
-            current.length + 1,
+            current.length +
+            1,
         },
       ]
     );
   }
 
   function removeSpecification(
-    index: number
+    index:
+      number
   ) {
     setSpecifications(
-      (current) =>
+      (
+        current
+      ) =>
         current.filter(
-          (_, i) => i !== index
+          (
+            _,
+            i
+          ) =>
+            i !==
+            index
         )
     );
   }
 
   function updateSpecification(
-    index: number,
+    index:
+      number,
+
     field:
       keyof SpecificationRow,
-    value: string
+
+    value:
+      string
   ) {
     setSpecifications(
-      (current) =>
+      (
+        current
+      ) =>
         current.map(
-          (item, i) =>
-            i === index
+          (
+            item,
+            i
+          ) =>
+            i ===
+            index
               ? {
                   ...item,
-                  [field]: value,
+                  [field]:
+                    value,
                 }
               : item
         )
@@ -719,7 +1134,9 @@ export default function AddVehicleForm({
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={
+        handleSubmit
+      }
     >
       <div className="grid gap-5 xl:grid-cols-3">
         {/* VEHICLE IMAGE */}
@@ -752,22 +1169,15 @@ export default function AddVehicleForm({
               onChange={
                 handleCoverImage
               }
-              disabled={saving}
+              disabled={
+                saving
+              }
               className="block w-full cursor-pointer rounded-lg border border-[#d8dce1] bg-white px-3 py-2.5 text-sm text-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
             />
 
             <p className="mt-2 text-xs text-gray-400">
-              JPG, PNG or WebP.
-              Maximum 10 MB.
+              JPG, PNG or WebP. Maximum 10 MB.
             </p>
-
-            {coverImage && (
-              <p className="mt-2 truncate text-xs text-gray-500">
-                {
-                  coverImage.name
-                }
-              </p>
-            )}
           </div>
 
           {coverPreview && (
@@ -776,7 +1186,9 @@ export default function AddVehicleForm({
               onClick={
                 removeCoverImage
               }
-              disabled={saving}
+              disabled={
+                saving
+              }
               className="text-left text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
             >
               Remove Image
@@ -804,10 +1216,16 @@ export default function AddVehicleForm({
           <Field label="Asset Type">
             <select
               name="asset_type"
-              value={assetType}
-              onChange={(e) =>
+              value={
+                assetType
+              }
+              onChange={(
+                event
+              ) =>
                 setAssetType(
-                  e.target.value
+                  event
+                    .target
+                    .value
                 )
               }
               className={
@@ -818,32 +1236,132 @@ export default function AddVehicleForm({
                 Motorcycle
               </option>
 
-              <option>Car</option>
-              <option>ATV</option>
+              <option>
+                Car
+              </option>
+
+              <option>
+                ATV
+              </option>
+
               <option>
                 Engine
               </option>
+
               <option>
                 Other
               </option>
             </select>
           </Field>
 
-<Field label="Ownership">
-  <select
-    name="ownership_status"
-    defaultValue="Owned"
-    className={inputClass}
-  >
-    <option value="Owned">
-      Owned
-    </option>
+          <Field
+            label="Ownership"
+            required
+          >
+            <select
+              value={
+                ownershipStatus
+              }
+              onChange={(
+                event
+              ) =>
+                handleOwnershipChange(
+                  event
+                    .target
+                    .value as
+                    | "Owned"
+                    | "Wishlist"
+                )
+              }
+              className={
+                inputClass
+              }
+            >
+              <option value="Owned">
+                Garage Vehicle
+              </option>
 
-    <option value="Wishlist">
-      Wishlist
-    </option>
-  </select>
-</Field>
+              <option value="Wishlist">
+                Wishlist
+              </option>
+            </select>
+          </Field>
+
+          <Field
+            label="Customer"
+            required={
+              ownershipStatus !==
+              "Wishlist"
+            }
+          >
+            <select
+              value={
+                customerId
+              }
+              onChange={(
+                event
+              ) =>
+                setCustomerId(
+                  event
+                    .target
+                    .value
+                )
+              }
+              disabled={
+                ownershipStatus ===
+                "Wishlist"
+              }
+              className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`}
+            >
+              <option value="">
+                {ownershipStatus ===
+                "Wishlist"
+                  ? "Not applicable"
+                  : "Select customer..."}
+              </option>
+
+              {sortedCustomers.map(
+                (
+                  customer
+                ) => (
+                  <option
+                    key={
+                      customer.id
+                    }
+                    value={
+                      customer.id
+                    }
+                  >
+                    {customer.name} — {formatCategory(
+                      customer.category
+                    )}
+                  </option>
+                )
+              )}
+            </select>
+          </Field>
+
+          {selectedCustomer &&
+            ownershipStatus !==
+              "Wishlist" && (
+              <div className="rounded-lg border border-[#e1e4e8] bg-[#f8f9fa] px-3 py-3">
+                <div className="text-sm font-medium">
+                  {
+                    selectedCustomer.name
+                  }
+                </div>
+
+                <div className="mt-1 text-xs text-gray-500">
+                  {formatCategory(
+                    selectedCustomer.category
+                  )}
+
+                  {selectedCustomer.phone
+                    ? ` · ${selectedCustomer.phone}`
+                    : ""}
+                </div>
+              </div>
+            )}
 
           <Field
             label="Make"
@@ -852,10 +1370,16 @@ export default function AddVehicleForm({
             <input
               name="make"
               required
-              value={make}
-              onChange={(e) =>
+              value={
+                make
+              }
+              onChange={(
+                event
+              ) =>
                 setMake(
-                  e.target.value
+                  event
+                    .target
+                    .value
                 )
               }
               placeholder="Harley Davidson"
@@ -872,10 +1396,16 @@ export default function AddVehicleForm({
             <input
               name="model"
               required
-              value={model}
-              onChange={(e) =>
+              value={
+                model
+              }
+              onChange={(
+                event
+              ) =>
                 setModel(
-                  e.target.value
+                  event
+                    .target
+                    .value
                 )
               }
               placeholder="Street 750"
@@ -888,10 +1418,16 @@ export default function AddVehicleForm({
           <Field label="Variant">
             <input
               name="variant"
-              value={variant}
-              onChange={(e) =>
+              value={
+                variant
+              }
+              onChange={(
+                event
+              ) =>
                 setVariant(
-                  e.target.value
+                  event
+                    .target
+                    .value
                 )
               }
               placeholder="Optional"
@@ -911,10 +1447,16 @@ export default function AddVehicleForm({
               required
               min="1900"
               max="2100"
-              value={year}
-              onChange={(e) =>
+              value={
+                year
+              }
+              onChange={(
+                event
+              ) =>
                 setYear(
-                  e.target.value
+                  event
+                    .target
+                    .value
                 )
               }
               placeholder="2018"
@@ -923,8 +1465,6 @@ export default function AddVehicleForm({
               }
             />
           </Field>
-
-          {/* AI LOOKUP */}
 
           <div className="rounded-xl border border-[#dfe2e6] bg-[#f7f8fa] p-4">
             <div className="flex items-start gap-3">
@@ -938,10 +1478,7 @@ export default function AddVehicleForm({
                 </div>
 
                 <p className="mt-1 text-xs leading-5 text-gray-500">
-                  Find factory
-                  information and
-                  specifications using
-                  AI and web research.
+                  Find factory information and specifications using AI and web research.
                 </p>
 
                 <button
@@ -962,22 +1499,12 @@ export default function AddVehicleForm({
                     ? "Researching..."
                     : "✦ Find Vehicle Details"}
                 </button>
-
-                {selectedTemplate && (
-                  <p className="mt-2 text-xs text-gray-400">
-                    Selected
-                    specification
-                    template will be
-                    used for the
-                    research.
-                  </p>
-                )}
               </div>
             </div>
           </div>
         </FormCard>
 
-        {/* STATUS & LOCATION */}
+        {/* STATUS */}
 
         <FormCard title="Status & Location">
           <Field label="Status">
@@ -1017,10 +1544,16 @@ export default function AddVehicleForm({
           <Field label="Location">
             <input
               name="location"
-              value={location}
-              onChange={(e) =>
+              value={
+                location
+              }
+              onChange={(
+                event
+              ) =>
                 setLocation(
-                  e.target.value
+                  event
+                    .target
+                    .value
                 )
               }
               placeholder="Ooty"
@@ -1035,7 +1568,6 @@ export default function AddVehicleForm({
               name="odometer"
               type="number"
               min="0"
-              placeholder="18420"
               className={
                 inputClass
               }
@@ -1079,8 +1611,6 @@ export default function AddVehicleForm({
           </Field>
         </FormCard>
 
-        {/* AI REVIEW */}
-
         {aiResult && (
           <div className="xl:col-span-3">
             <AiResearchCard
@@ -1108,12 +1638,15 @@ export default function AddVehicleForm({
               value={
                 enginePlatform
               }
-              onChange={(e) =>
+              onChange={(
+                event
+              ) =>
                 setEnginePlatform(
-                  e.target.value
+                  event
+                    .target
+                    .value
                 )
               }
-              placeholder="Revolution X"
               className={
                 inputClass
               }
@@ -1125,13 +1658,18 @@ export default function AddVehicleForm({
               name="engine_cc"
               type="number"
               min="0"
-              value={engineCc}
-              onChange={(e) =>
+              value={
+                engineCc
+              }
+              onChange={(
+                event
+              ) =>
                 setEngineCc(
-                  e.target.value
+                  event
+                    .target
+                    .value
                 )
               }
-              placeholder="750"
               className={
                 inputClass
               }
@@ -1150,7 +1688,7 @@ export default function AddVehicleForm({
 
         {/* OWNERSHIP */}
 
-        <FormCard title="Ownership">
+        <FormCard title="Ownership Details">
           <Field label="Purchase Date">
             <input
               name="purchase_date"
@@ -1202,8 +1740,9 @@ export default function AddVehicleForm({
           <FormCard title="Notes">
             <textarea
               name="notes"
-              rows={7}
-              placeholder="General vehicle notes..."
+              rows={
+                7
+              }
               className={`${inputClass} resize-y`}
             />
           </FormCard>
@@ -1216,17 +1755,20 @@ export default function AddVehicleForm({
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-72 flex-1">
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Specification
-                  Template
+                  Specification Template
                 </label>
 
                 <select
                   value={
                     selectedTemplate
                   }
-                  onChange={(e) =>
+                  onChange={(
+                    event
+                  ) =>
                     setSelectedTemplate(
-                      e.target.value
+                      event
+                        .target
+                        .value
                     )
                   }
                   className={
@@ -1234,8 +1776,7 @@ export default function AddVehicleForm({
                   }
                 >
                   <option value="">
-                    Select
-                    template...
+                    Select template...
                   </option>
 
                   {templates.map(
@@ -1268,7 +1809,7 @@ export default function AddVehicleForm({
                   !selectedTemplate ||
                   saving
                 }
-                className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
               >
                 Apply Template
               </button>
@@ -1278,164 +1819,137 @@ export default function AddVehicleForm({
                 onClick={
                   addSpecification
                 }
-                disabled={saving}
-                className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                disabled={
+                  saving
+                }
+                className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
               >
                 + Add Specification
               </button>
             </div>
 
             {specifications.length >
-              0 && (
-              <div className="mt-5">
-                <div className="mb-2 hidden gap-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-400 md:grid md:grid-cols-[1fr_1.4fr_1.4fr_0.6fr_auto]">
-                  <div>
-                    Category
-                  </div>
-
-                  <div>
-                    Specification
-                  </div>
-
-                  <div>
-                    Value
-                  </div>
-
-                  <div>
-                    Unit
-                  </div>
-
-                  <div />
-                </div>
-
-                <div className="space-y-2">
-                  {specifications.map(
-                    (
-                      spec,
-                      index
-                    ) => (
-                      <div
-                        key={
-                          index
+            0 ? (
+              <div className="mt-5 space-y-2">
+                {specifications.map(
+                  (
+                    spec,
+                    index
+                  ) => (
+                    <div
+                      key={
+                        index
+                      }
+                      className="grid gap-2 rounded-lg border border-[#e5e7ea] bg-[#fafafa] p-3 md:grid-cols-[1fr_1.4fr_1.4fr_0.6fr_auto]"
+                    >
+                      <input
+                        value={
+                          spec.category
                         }
-                        className="grid gap-2 rounded-lg border border-[#e5e7ea] bg-[#fafafa] p-3 md:grid-cols-[1fr_1.4fr_1.4fr_0.6fr_auto]"
+                        onChange={(
+                          event
+                        ) =>
+                          updateSpecification(
+                            index,
+                            "category",
+                            event
+                              .target
+                              .value
+                          )
+                        }
+                        placeholder="Category"
+                        className={
+                          inputClass
+                        }
+                      />
+
+                      <input
+                        value={
+                          spec.specification
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          updateSpecification(
+                            index,
+                            "specification",
+                            event
+                              .target
+                              .value
+                          )
+                        }
+                        placeholder="Specification"
+                        className={
+                          inputClass
+                        }
+                      />
+
+                      <input
+                        value={
+                          spec.value
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          updateSpecification(
+                            index,
+                            "value",
+                            event
+                              .target
+                              .value
+                          )
+                        }
+                        placeholder="Value"
+                        className={
+                          inputClass
+                        }
+                      />
+
+                      <input
+                        value={
+                          spec.unit ??
+                          ""
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          updateSpecification(
+                            index,
+                            "unit",
+                            event
+                              .target
+                              .value
+                          )
+                        }
+                        placeholder="Unit"
+                        className={
+                          inputClass
+                        }
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeSpecification(
+                            index
+                          )
+                        }
+                        className="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
-                        <input
-                          value={
-                            spec.category
-                          }
-                          onChange={(
-                            e
-                          ) =>
-                            updateSpecification(
-                              index,
-                              "category",
-                              e.target
-                                .value
-                            )
-                          }
-                          placeholder="Category"
-                          className={
-                            inputClass
-                          }
-                        />
-
-                        <input
-                          value={
-                            spec.specification
-                          }
-                          onChange={(
-                            e
-                          ) =>
-                            updateSpecification(
-                              index,
-                              "specification",
-                              e.target
-                                .value
-                            )
-                          }
-                          placeholder="Specification"
-                          className={
-                            inputClass
-                          }
-                        />
-
-                        <input
-                          value={
-                            spec.value
-                          }
-                          onChange={(
-                            e
-                          ) =>
-                            updateSpecification(
-                              index,
-                              "value",
-                              e.target
-                                .value
-                            )
-                          }
-                          placeholder="Value"
-                          className={
-                            inputClass
-                          }
-                        />
-
-                        <input
-                          value={
-                            spec.unit ??
-                            ""
-                          }
-                          onChange={(
-                            e
-                          ) =>
-                            updateSpecification(
-                              index,
-                              "unit",
-                              e.target
-                                .value
-                            )
-                          }
-                          placeholder="Unit"
-                          className={
-                            inputClass
-                          }
-                        />
-
-                        <button
-                          type="button"
-                          disabled={
-                            saving
-                          }
-                          onClick={() =>
-                            removeSpecification(
-                              index
-                            )
-                          }
-                          className="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )
-                  )}
-                </div>
+                        Remove
+                      </button>
+                    </div>
+                  )
+                )}
               </div>
-            )}
-
-            {specifications.length ===
-              0 && (
+            ) : (
               <div className="mt-5 rounded-lg border border-dashed border-gray-300 py-10 text-center text-sm text-gray-500">
-                Select a template
-                or add a
-                specification
-                manually.
+                Select a template or add a specification manually.
               </div>
             )}
           </FormCard>
         </div>
       </div>
-
-      {/* ERROR */}
 
       {error && (
         <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1443,11 +1957,9 @@ export default function AddVehicleForm({
         </div>
       )}
 
-      {/* ACTIONS */}
-
       <div className="mt-6 flex justify-end gap-3">
         <Link
-          href="/"
+          href="/vehicles"
           className="rounded-lg border border-[#d8dce1] bg-white px-5 py-2.5 text-sm font-medium hover:bg-gray-50"
         >
           Cancel
@@ -1459,12 +1971,10 @@ export default function AddVehicleForm({
             saving ||
             researching
           }
-          className="rounded-lg bg-[#1d2228] px-5 py-2.5 text-sm font-medium text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-[#1d2228] px-5 py-2.5 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
         >
           {saving
-            ? coverImage
-              ? "Uploading & Saving..."
-              : "Saving..."
+            ? "Saving..."
             : "Add Vehicle"}
         </button>
       </div>
@@ -1472,30 +1982,64 @@ export default function AddVehicleForm({
   );
 }
 
-/*
- * AI REVIEW CARD
- */
+function formatCategory(
+  category:
+    string
+) {
+  const value =
+    String(
+      category ??
+        ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    value ===
+    "self-owned"
+  ) {
+    return "Self-owned";
+  }
+
+  if (
+    value ===
+    "vip"
+  ) {
+    return "VIP";
+  }
+
+  if (
+    value ===
+    "general"
+  ) {
+    return "General";
+  }
+
+  return category;
+}
+
+/* AI COMPONENTS */
 
 function AiResearchCard({
   result,
   onApply,
   onCancel,
 }: {
-  result: AiVehicleResult;
-  onApply: () => void;
-  onCancel: () => void;
+  result:
+    AiVehicleResult;
+
+  onApply:
+    () => void;
+
+  onCancel:
+    () => void;
 }) {
   const foundSpecifications =
     result.specifications.filter(
-      (item) =>
+      (
+        item
+      ) =>
         item.value.trim() !==
-        ""
-    );
-
-  const missingSpecifications =
-    result.specifications.filter(
-      (item) =>
-        item.value.trim() ===
         ""
     );
 
@@ -1503,10 +2047,9 @@ function AiResearchCard({
     <section className="rounded-xl border border-[#ccd1d7] bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">
-              ✦ AI Research
-              Result
+              ✦ AI Research Result
             </h2>
 
             <ConfidenceBadge
@@ -1516,17 +2059,15 @@ function AiResearchCard({
             />
           </div>
 
-          <p className="mt-2 text-base font-medium">
+          <p className="mt-2 font-medium">
             {result.year}{" "}
             {result.make}{" "}
-            {result.model}
-            {result.variant
-              ? ` ${result.variant}`
-              : ""}
+            {result.model}{" "}
+            {result.variant}
           </p>
 
           {result.identification_notes && (
-            <p className="mt-2 max-w-4xl text-sm leading-6 text-gray-500">
+            <p className="mt-2 text-sm text-gray-500">
               {
                 result.identification_notes
               }
@@ -1534,202 +2075,68 @@ function AiResearchCard({
           )}
         </div>
 
-        <div className="flex shrink-0 gap-2">
+        <div className="flex gap-2">
           <button
             type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
+            onClick={
+              onCancel
+            }
+            className="rounded-lg border px-4 py-2.5 text-sm"
           >
             Cancel
           </button>
 
           <button
             type="button"
-            onClick={onApply}
+            onClick={
+              onApply
+            }
             disabled={
               !result.identified
             }
-            className="rounded-lg bg-[#1d2228] px-4 py-2.5 text-sm font-medium text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg bg-[#1d2228] px-4 py-2.5 text-sm text-white disabled:opacity-40"
           >
             Apply Details
           </button>
         </div>
       </div>
 
-      {/* QUICK SUMMARY */}
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <AiValue
-          label="Engine"
-          value={
-            result.engine_platform ||
-            "Not confirmed"
-          }
-        />
-
-        <AiValue
-          label="Capacity"
-          value={
-            result.engine_cc
-              ? `${result.engine_cc} cc`
-              : "Not confirmed"
-          }
-        />
-
-        <AiValue
-          label="Specifications Found"
-          value={String(
-            foundSpecifications.length
-          )}
-        />
-
-        <AiValue
-          label="Not Confirmed"
-          value={String(
-            missingSpecifications.length
-          )}
-        />
-      </div>
-
-      {/* WARNINGS */}
-
-      {result.warnings &&
-        result.warnings.length >
-          0 && (
-          <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="text-sm font-semibold text-amber-800">
-              Check before applying
-            </div>
-
-            <ul className="mt-2 space-y-1 text-sm text-amber-700">
-              {result.warnings.map(
-                (
-                  warning,
-                  index
-                ) => (
-                  <li
-                    key={
-                      index
-                    }
-                  >
-                    • {warning}
-                  </li>
-                )
-              )}
-            </ul>
-          </div>
-        )}
-
-      {/* SPEC PREVIEW */}
-
       {foundSpecifications.length >
         0 && (
-        <div className="mt-5">
-          <div className="mb-3 text-sm font-semibold">
-            Specifications
-            found
-          </div>
-
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {foundSpecifications.map(
-              (
-                item,
-                index
-              ) => (
-                <div
-                  key={`${item.category}-${item.specification}-${index}`}
-                  className="rounded-lg border border-[#e5e7ea] bg-[#fafafa] px-3 py-3"
-                >
-                  <div className="text-xs text-gray-400">
-                    {
-                      item.category
-                    }
-                  </div>
-
-                  <div className="mt-1 text-sm font-medium">
-                    {
-                      item.specification
-                    }
-                  </div>
-
-                  <div className="mt-1 flex items-center justify-between gap-3">
-                    <span className="text-sm text-gray-600">
-                      {item.value}
-                      {item.unit
-                        ? ` ${item.unit}`
-                        : ""}
-                    </span>
-
-                    <ConfidenceDot
-                      confidence={
-                        item.confidence
-                      }
-                    />
-                  </div>
+        <div className="mt-5 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {foundSpecifications.map(
+            (
+              item,
+              index
+            ) => (
+              <div
+                key={
+                  index
+                }
+                className="rounded-lg border bg-[#fafafa] p-3"
+              >
+                <div className="text-xs text-gray-400">
+                  {
+                    item.category
+                  }
                 </div>
-              )
-            )}
-          </div>
+
+                <div className="mt-1 text-sm font-medium">
+                  {
+                    item.specification
+                  }
+                </div>
+
+                <div className="mt-1 text-sm text-gray-600">
+                  {item.value}{" "}
+                  {item.unit}
+                </div>
+              </div>
+            )
+          )}
         </div>
       )}
-
-      {/* SOURCES */}
-
-      {result.sources &&
-        result.sources.length >
-          0 && (
-          <div className="mt-5 border-t border-[#e7e8ea] pt-4">
-            <div className="text-sm font-semibold">
-              Research Sources
-            </div>
-
-            <div className="mt-2 flex flex-wrap gap-2">
-              {result.sources
-                .slice(0, 8)
-                .map(
-                  (
-                    source,
-                    index
-                  ) => (
-                    <a
-                      key={`${source.url}-${index}`}
-                      href={
-                        source.url
-                      }
-                      target="_blank"
-                      rel="noreferrer"
-                      className="max-w-xs truncate rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 hover:text-black"
-                    >
-                      {
-                        source.title
-                      }
-                    </a>
-                  )
-                )}
-            </div>
-          </div>
-        )}
     </section>
-  );
-}
-
-function AiValue({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-lg border border-[#e5e7ea] bg-[#fafafa] px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
-        {label}
-      </div>
-
-      <div className="mt-1 text-sm font-semibold">
-        {value}
-      </div>
-    </div>
   );
 }
 
@@ -1741,51 +2148,12 @@ function ConfidenceBadge({
     | "medium"
     | "low";
 }) {
-  const styles = {
-    high:
-      "bg-green-100 text-green-700",
-
-    medium:
-      "bg-amber-100 text-amber-700",
-
-    low:
-      "bg-red-100 text-red-700",
-  };
-
   return (
-    <span
-      className={`rounded-full px-2.5 py-1 text-xs font-medium ${styles[confidence]}`}
-    >
+    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs">
       {confidence} confidence
     </span>
   );
 }
-
-function ConfidenceDot({
-  confidence,
-}: {
-  confidence:
-    | "high"
-    | "medium"
-    | "low";
-}) {
-  const styles = {
-    high: "bg-green-500",
-    medium: "bg-amber-500",
-    low: "bg-red-500",
-  };
-
-  return (
-    <span
-      title={`${confidence} confidence`}
-      className={`h-2 w-2 shrink-0 rounded-full ${styles[confidence]}`}
-    />
-  );
-}
-
-/*
- * COMMON FORM STYLES
- */
 
 const inputClass =
   "w-full rounded-lg border border-[#d8dce1] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]";
@@ -1795,9 +2163,14 @@ function Field({
   required = false,
   children,
 }: {
-  label: string;
-  required?: boolean;
-  children: ReactNode;
+  label:
+    string;
+
+  required?:
+    boolean;
+
+  children:
+    ReactNode;
 }) {
   return (
     <label className="block">
@@ -1820,8 +2193,11 @@ function FormCard({
   title,
   children,
 }: {
-  title: string;
-  children: ReactNode;
+  title:
+    string;
+
+  children:
+    ReactNode;
 }) {
   return (
     <section className="rounded-xl border border-[#e0e3e7] bg-white p-5">

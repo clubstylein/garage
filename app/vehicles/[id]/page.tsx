@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import VehicleDashboard from "@/components/vehicle-dashboard";
+import VehicleDashboard from "@/components/vehicle-full-view";
 import {
   getVehicle,
   getVehicleWorkItems,

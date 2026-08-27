@@ -1,211 +1,525 @@
-  import {
-    SpecTemplate,
-    SpecificationRow,
-    Vehicle,
-    WorkItem,
-  } from "@/lib/mock-data";
+import {
+  SpecTemplate,
+  SpecificationRow,
+  Vehicle,
+  VehicleCustomer,
+  WorkItem,
+} from "@/lib/mock-data";
 
-  const DIRECTUS_URL =
-    process.env.DIRECTUS_URL;
+/* =========================================================
+   DIRECTUS CONFIG
+   ========================================================= */
 
-  const DIRECTUS_TOKEN =
-    process.env.DIRECTUS_TOKEN;
+const DIRECTUS_URL =
+  process.env.DIRECTUS_URL;
 
-  if (!DIRECTUS_URL) {
-    throw new Error(
-      "DIRECTUS_URL is not configured"
-    );
-  }
+const DIRECTUS_TOKEN =
+  process.env.DIRECTUS_TOKEN;
 
-  if (!DIRECTUS_TOKEN) {
-    throw new Error(
-      "DIRECTUS_TOKEN is not configured"
-    );
-  }
+if (!DIRECTUS_URL) {
+  throw new Error(
+    "DIRECTUS_URL is not configured"
+  );
+}
 
-  const directusHeaders = {
-    Authorization:
-      `Bearer ${DIRECTUS_TOKEN}`,
-  };
+if (!DIRECTUS_TOKEN) {
+  throw new Error(
+    "DIRECTUS_TOKEN is not configured"
+  );
+}
 
-  type DirectusVehicle = {
-    id: string;
-    name: string;
-    asset_type?: string;
-    make: string;
-    model: string;
-    variant?: string;
-    year: number;
-    status: string;
-    ownership_status?: string;
-    registration_number?: string;
-    vin?: string;
-    engine_number?: string;
-    engine_platform?: string;
-    engine_cc?: number;
-    odometer?: number;
-    odometer_unit?: string;
-    purchase_date?: string;
-    purchase_price?: number;
-    currency?: string;
-    location?: string;
-    notes?: string;
-    cover_image?: string | null;
-    archived?: boolean;
-  };
+const directusHeaders = {
+  Authorization:
+    `Bearer ${DIRECTUS_TOKEN}`,
+};
+
+/* =========================================================
+   DIRECTUS TYPES
+   ========================================================= */
+
+type DirectusCustomer = {
+  id: string | number;
+
+  customer_code?: string;
+
+  name?: string;
+
+  category?: string;
+
+  phone?: string;
+
+  email?: string;
+
+  address?: string;
+
+  city?: string;
+
+  state?: string;
+
+  pincode?: string;
+
+  country?: string;
+
+  notes?: string;
+
+  active?: boolean;
+
+  archived?: boolean;
+};
+
+type DirectusVehicle = {
+  id: string | number;
+
+  name: string;
+
+  asset_type?: string;
+
+  make: string;
+
+  model: string;
+
+  variant?: string;
+
+  year: number;
+
+  status: string;
+
+  ownership_status?: string;
+
+  customer?:
+    | string
+    | number
+    | DirectusCustomer
+    | null;
+
+  registration_number?: string;
+
+  vin?: string;
+
+  engine_number?: string;
+
+  engine_platform?: string;
+
+  engine_cc?: number;
+
+  odometer?: number;
+
+  odometer_unit?: string;
+
+  purchase_date?: string;
+
+  purchase_price?: number;
+
+  currency?: string;
+
+  location?: string;
+
+  notes?: string;
+
+  cover_image?:
+    | string
+    | null;
+
+  archived?: boolean;
+};
 
 type DirectusWorkItem = {
   id: string;
 
   vehicle?:
     | string
+    | number
     | {
-        id: string;
+        id:
+          | string
+          | number;
       }
     | null;
 
   title: string;
+
   category?: string;
+
   priority?: number;
+
   status?: string;
+
   work_description?: string;
+
   odometer?: number;
+
   target_date?: string;
+
   started_date?: string;
+
   completed_date?: string;
+
   estimated_cost?: number;
+
   notes?: string;
+
   archived?: boolean;
+
   sort?: number;
 };
 
-  type DirectusSpecTemplate = {
-    id: string;
-    name: string;
-    asset_type?: string;
-    description?: string;
-    active?: boolean;
+type DirectusSpecTemplate = {
+  id: string;
+
+  name: string;
+
+  asset_type?: string;
+
+  description?: string;
+
+  active?: boolean;
+};
+
+type DirectusSpecTemplateItem = {
+  id: string;
+
+  template:
+    | string
+    | number
+    | {
+        id:
+          | string
+          | number;
+      };
+
+  category: string;
+
+  specification: string;
+
+  default_unit?: string;
+
+  sort?: number;
+
+  required?: boolean;
+};
+
+type DirectusVehicleSpecification = {
+  id: string;
+
+  vehicle?:
+    | string
+    | number
+    | {
+        id:
+          | string
+          | number;
+      };
+
+  category?: string;
+
+  specification: string;
+
+  value?: string;
+
+  unit?: string;
+
+  notes?: string;
+
+  sort?: number;
+};
+
+/* =========================================================
+   CUSTOMER MAPPING
+   ========================================================= */
+
+function mapCustomer(
+  customer: DirectusCustomer
+): VehicleCustomer {
+  return {
+    id:
+      String(
+        customer.id
+      ),
+
+    customerCode:
+      customer.customer_code ??
+      "",
+
+    name:
+      customer.name ??
+      "",
+
+    category:
+      customer.category ??
+      "",
+
+    phone:
+      customer.phone ??
+      "",
+
+    email:
+      customer.email ??
+      "",
+
+    pincode:
+      customer.pincode ??
+      "",
   };
+}
 
-  type DirectusSpecTemplateItem = {
-    id: string;
+/* =========================================================
+   VEHICLE CUSTOMER ID HELPER
+   ========================================================= */
 
-    template:
-      | string
-      | { id: string };
-
-    category: string;
-    specification: string;
-    default_unit?: string;
-    sort?: number;
-    required?: boolean;
-  };
-
-  type DirectusVehicleSpecification = {
-    id: string;
-
-    vehicle?:
-      | string
-      | { id: string };
-
-    category?: string;
-    specification: string;
-    value?: string;
-    unit?: string;
-    notes?: string;
-    sort?: number;
-  };
-
-  function mapVehicle(
-    item: DirectusVehicle
-  ): Vehicle {
-    return {
-      id: item.id,
-
-      name: item.name,
-
-      assetType:
-        item.asset_type,
-
-      make: item.make,
-
-      model: item.model,
-
-      variant:
-        item.variant,
-
-      year: item.year,
-
-      status:
-        item.status,
-  
-      ownershipStatus:
-        item.ownership_status === "Wishlist"
-          ? "Wishlist"
-          : "Owned",
-
-      registrationNumber:
-        item.registration_number,
-
-      vin:
-        item.vin,
-
-      engineNumber:
-        item.engine_number,
-
-      engine:
-        item.engine_platform,
-
-      engineCc:
-        item.engine_cc,
-
-      odometer:
-        item.odometer ?? 0,
-
-      odometerUnit:
-        item.odometer_unit ===
-        "mi"
-          ? "mi"
-          : "km",
-
-      purchaseDate:
-        item.purchase_date,
-
-      purchasePrice:
-        item.purchase_price,
-
-      currency:
-        item.currency,
-
-      location:
-        item.location ?? "",
-
-      notes:
-        item.notes,
-
-      coverImageId:
-        item.cover_image ??
-        undefined,
-
-      coverImage:
-        item.cover_image
-          ? `/api/files/${item.cover_image}`
-          : undefined,
-    };
+function getVehicleCustomerId(
+  item: DirectusVehicle
+): string | null {
+  if (
+    item.customer === null ||
+    item.customer === undefined
+  ) {
+    return null;
   }
 
-  
-  export async function getAllWorkItems(): Promise<WorkItem[]> {
-  const response = await fetch(
-    `${DIRECTUS_URL}/items/garage_work_items?fields=id,vehicle.id,title,category,priority,status,work_description,odometer,target_date,started_date,completed_date,estimated_cost,notes,archived,sort&filter[archived][_neq]=true&sort=priority,target_date,title`,
-    {
-      headers: directusHeaders,
-      cache: "no-store",
-    }
-  );
+  if (
+    typeof item.customer ===
+      "string" ||
+    typeof item.customer ===
+      "number"
+  ) {
+    return String(
+      item.customer
+    );
+  }
+
+  if (
+    typeof item.customer ===
+      "object" &&
+    item.customer.id !==
+      undefined &&
+    item.customer.id !==
+      null
+  ) {
+    return String(
+      item.customer.id
+    );
+  }
+
+  return null;
+}
+
+/* =========================================================
+   VEHICLE MAPPING
+   ========================================================= */
+
+function mapVehicle(
+  item: DirectusVehicle,
+  customer:
+    | DirectusCustomer
+    | null = null
+): Vehicle {
+  const mappedVehicle: Vehicle = {
+    id:
+      String(
+        item.id
+      ),
+
+    name:
+      item.name,
+
+    assetType:
+      item.asset_type,
+
+    make:
+      item.make,
+
+    model:
+      item.model,
+
+    variant:
+      item.variant,
+
+    year:
+      item.year,
+
+    status:
+      item.status,
+
+    /*
+     * Keep ownership status for
+     * distinguishing Wishlist.
+     */
+
+    ownershipStatus:
+      item.ownership_status ===
+      "Wishlist"
+        ? "Wishlist"
+        : "Owned",
+
+    /*
+     * CUSTOMER
+     */
+
+    customer:
+      customer
+        ? mapCustomer(
+            customer
+          )
+        : null,
+
+    customerId:
+      customer
+        ? String(
+            customer.id
+          )
+        : undefined,
+
+    customerCode:
+      customer
+        ?.customer_code,
+
+    customerName:
+      customer
+        ?.name,
+
+    customerCategory:
+      customer
+        ?.category,
+
+    registrationNumber:
+      item.registration_number,
+
+    vin:
+      item.vin,
+
+    engineNumber:
+      item.engine_number,
+
+    engine:
+      item.engine_platform,
+
+    engineCc:
+      item.engine_cc,
+
+    odometer:
+      item.odometer ??
+      0,
+
+    odometerUnit:
+      item.odometer_unit ===
+      "mi"
+        ? "mi"
+        : "km",
+
+    purchaseDate:
+      item.purchase_date,
+
+    purchasePrice:
+      item.purchase_price,
+
+    currency:
+      item.currency,
+
+    location:
+      item.location ??
+      "",
+
+    notes:
+      item.notes,
+
+    coverImageId:
+      item.cover_image ??
+      undefined,
+
+    coverImage:
+      item.cover_image
+        ? `/api/files/${item.cover_image}`
+        : undefined,
+  };
+
+  return mappedVehicle;
+}
+
+/* =========================================================
+   CUSTOMER LOADER - INTERNAL
+   ========================================================= */
+
+async function getDirectusCustomers(): Promise<
+  DirectusCustomer[]
+> {
+  const response =
+    await fetch(
+      `${DIRECTUS_URL}/items/garage_customers?fields=id,customer_code,name,category,phone,email,address,city,state,pincode,country,notes,active,archived&filter[archived][_neq]=true&sort=name`,
+      {
+        headers:
+          directusHeaders,
+
+        cache:
+          "no-store",
+      }
+    );
 
   if (!response.ok) {
-    const error = await response.text();
+    const error =
+      await response.text();
+
+    console.error(
+      "Unable to load garage customers:",
+      response.status,
+      error
+    );
+
+    throw new Error(
+      `Unable to load garage customers from Directus: ${response.status}`
+    );
+  }
+
+  const result =
+    await response.json();
+
+  return (
+    result.data as DirectusCustomer[]
+  );
+}
+
+/* =========================================================
+   CUSTOMERS - PUBLIC
+   ========================================================= */
+
+export async function getCustomers(): Promise<
+  VehicleCustomer[]
+> {
+  const customers =
+    await getDirectusCustomers();
+
+  return customers
+    .filter(
+      (customer) =>
+        customer.active !==
+        false
+    )
+    .map(
+      mapCustomer
+    );
+}
+
+/* =========================================================
+   ALL WORK ITEMS
+   ========================================================= */
+
+export async function getAllWorkItems(): Promise<
+  WorkItem[]
+> {
+  const response =
+    await fetch(
+      `${DIRECTUS_URL}/items/garage_work_items?fields=id,vehicle.id,title,category,priority,status,work_description,odometer,target_date,started_date,completed_date,estimated_cost,notes,archived,sort&filter[archived][_neq]=true&sort=priority,target_date,title`,
+      {
+        headers:
+          directusHeaders,
+
+        cache:
+          "no-store",
+      }
+    );
+
+  if (!response.ok) {
+    const error =
+      await response.text();
 
     console.error(
       "Unable to load all work items:",
@@ -218,22 +532,37 @@ type DirectusWorkItem = {
     );
   }
 
-  const result = await response.json();
+  const result =
+    await response.json();
 
   return (
     result.data as DirectusWorkItem[]
   ).map((item) => {
     const vehicleId =
-      typeof item.vehicle === "string"
-        ? item.vehicle
-        : item.vehicle?.id ?? "";
+      typeof item.vehicle ===
+        "string" ||
+      typeof item.vehicle ===
+        "number"
+        ? String(
+            item.vehicle
+          )
+        : item.vehicle?.id !==
+          undefined
+          ? String(
+              item.vehicle.id
+            )
+          : "";
 
     return {
-      id: item.id,
+      id:
+        String(
+          item.id
+        ),
 
       vehicleId,
 
-      title: item.title,
+      title:
+        item.title,
 
       category:
         item.category,
@@ -268,91 +597,182 @@ type DirectusWorkItem = {
   });
 }
 
-  function mapWorkItem(
-    item: DirectusWorkItem,
-    fallbackVehicleId: string
-  ): WorkItem {
-    const vehicleId =
-      typeof item.vehicle ===
-      "string"
-        ? item.vehicle
-        : item.vehicle?.id ??
-          fallbackVehicleId;
+/* =========================================================
+   WORK ITEM MAPPING
+   ========================================================= */
 
-    return {
-      id: item.id,
+function mapWorkItem(
+  item:
+    DirectusWorkItem,
 
-      vehicleId,
+  fallbackVehicleId:
+    string
+): WorkItem {
+  const vehicleId =
+    typeof item.vehicle ===
+      "string" ||
+    typeof item.vehicle ===
+      "number"
+      ? String(
+          item.vehicle
+        )
+      : item.vehicle?.id !==
+        undefined
+        ? String(
+            item.vehicle.id
+          )
+        : fallbackVehicleId;
 
-      title: item.title,
+  return {
+    id:
+      String(
+        item.id
+      ),
 
-      category:
-        item.category,
+    vehicleId,
 
-      priority:
-        item.priority,
+    title:
+      item.title,
 
-      status:
-        item.status,
+    category:
+      item.category,
 
-      workDescription:
-        item.work_description,
+    priority:
+      item.priority,
 
-      odometer:
-        item.odometer,
+    status:
+      item.status,
 
-      targetDate:
-        item.target_date,
+    workDescription:
+      item.work_description,
 
-      startedDate:
-        item.started_date,
+    odometer:
+      item.odometer,
 
-      completedDate:
-        item.completed_date,
+    targetDate:
+      item.target_date,
 
-      estimatedCost:
-        item.estimated_cost,
+    startedDate:
+      item.started_date,
 
-      notes:
-        item.notes,
-    };
+    completedDate:
+      item.completed_date,
+
+    estimatedCost:
+      item.estimated_cost,
+
+    notes:
+      item.notes,
+  };
+}
+
+/* =========================================================
+   VEHICLES
+   ========================================================= */
+
+export async function getVehicles(): Promise<
+  Vehicle[]
+> {
+  const [
+    vehicleResponse,
+    customers,
+  ] =
+    await Promise.all([
+      fetch(
+        `${DIRECTUS_URL}/items/garage_vehicles?filter[archived][_neq]=true&sort=sort,name`,
+        {
+          headers:
+            directusHeaders,
+
+          cache:
+            "no-store",
+        }
+      ),
+
+      getDirectusCustomers(),
+    ]);
+
+  if (!vehicleResponse.ok) {
+    const error =
+      await vehicleResponse.text();
+
+    console.error(
+      "Unable to load vehicles:",
+      vehicleResponse.status,
+      error
+    );
+
+    throw new Error(
+      `Unable to load vehicles from Directus: ${vehicleResponse.status}`
+    );
+  }
+
+  const vehicleResult =
+    await vehicleResponse.json();
+
+  const directusVehicles =
+    vehicleResult.data as DirectusVehicle[];
+
+  /*
+   * CUSTOMER ID → CUSTOMER
+   */
+
+  const customerMap =
+    new Map<
+      string,
+      DirectusCustomer
+    >();
+
+  for (
+    const customer of
+    customers
+  ) {
+    customerMap.set(
+      String(
+        customer.id
+      ),
+      customer
+    );
   }
 
   /*
-  * VEHICLES
-  */
+   * JOIN VEHICLE → CUSTOMER
+   */
 
-  export async function getVehicles(): Promise<
-    Vehicle[]
-  > {
-    const response = await fetch(
-      `${DIRECTUS_URL}/items/garage_vehicles?filter[archived][_neq]=true&sort=sort,name`,
-      {
-        headers:
-          directusHeaders,
+  return directusVehicles.map(
+    (vehicle) => {
+      const customerId =
+        getVehicleCustomerId(
+          vehicle
+        );
 
-        cache: "no-store",
-      }
-    );
+      const customer =
+        customerId
+          ? customerMap.get(
+              customerId
+            ) ??
+            null
+          : null;
 
-    if (!response.ok) {
-      throw new Error(
-        `Unable to load vehicles from Directus: ${response.status}`
+      return mapVehicle(
+        vehicle,
+        customer
       );
     }
+  );
+}
 
-    const result =
-      await response.json();
+/* =========================================================
+   SINGLE VEHICLE
+   ========================================================= */
 
-    return (
-      result.data as DirectusVehicle[]
-    ).map(mapVehicle);
-  }
-
-  export async function getVehicle(
-    id: string
-  ): Promise<Vehicle | null> {
-    const response = await fetch(
+export async function getVehicle(
+  id: string
+): Promise<
+  Vehicle | null
+> {
+  const vehicleResponse =
+    await fetch(
       `${DIRECTUS_URL}/items/garage_vehicles/${encodeURIComponent(
         id
       )}`,
@@ -360,49 +780,117 @@ type DirectusWorkItem = {
         headers:
           directusHeaders,
 
-        cache: "no-store",
+        cache:
+          "no-store",
       }
     );
 
-    if (
-      response.status === 404
-    ) {
-      return null;
-    }
+  if (
+    vehicleResponse.status ===
+    404
+  ) {
+    return null;
+  }
 
-    if (!response.ok) {
-      throw new Error(
-        `Unable to load vehicle from Directus: ${response.status}`
-      );
-    }
+  if (!vehicleResponse.ok) {
+    const error =
+      await vehicleResponse.text();
 
-    const result =
-      await response.json();
+    console.error(
+      "Unable to load vehicle:",
+      vehicleResponse.status,
+      error
+    );
 
-    return mapVehicle(
-      result.data
+    throw new Error(
+      `Unable to load vehicle from Directus: ${vehicleResponse.status}`
     );
   }
 
-  /*
-  * WORK ITEMS
-  */
+  const vehicleResult =
+    await vehicleResponse.json();
+
+  const vehicle =
+    vehicleResult.data as DirectusVehicle;
+
+  const customerId =
+    getVehicleCustomerId(
+      vehicle
+    );
+
+  let customer:
+    | DirectusCustomer
+    | null =
+      null;
+
+  if (customerId) {
+    const customerResponse =
+      await fetch(
+        `${DIRECTUS_URL}/items/garage_customers/${encodeURIComponent(
+          customerId
+        )}?fields=id,customer_code,name,category,phone,email,address,city,state,pincode,country,notes,active,archived`,
+        {
+          headers:
+            directusHeaders,
+
+          cache:
+            "no-store",
+        }
+      );
+
+    if (
+      customerResponse.ok
+    ) {
+      const customerResult =
+        await customerResponse.json();
+
+      customer =
+        customerResult.data as DirectusCustomer;
+    } else {
+      const error =
+        await customerResponse.text();
+
+      console.error(
+        "Unable to load vehicle customer:",
+        customerResponse.status,
+        error
+      );
+    }
+  }
+
+  return mapVehicle(
+    vehicle,
+    customer
+  );
+}
+
+/* =========================================================
+   VEHICLE WORK ITEMS
+   ========================================================= */
 
 export async function getVehicleWorkItems(
-  vehicleId: string
-): Promise<WorkItem[]> {
-  const response = await fetch(
-    `${DIRECTUS_URL}/items/garage_work_items?fields=id,vehicle.id,title,category,priority,status,work_description,odometer,target_date,started_date,completed_date,estimated_cost,notes,archived,sort&filter[vehicle][_eq]=${encodeURIComponent(
-      vehicleId
-    )}&filter[archived][_neq]=true&sort=priority,sort`,
-    {
-      headers: directusHeaders,
-      cache: "no-store",
-    }
-  );
+  vehicleId:
+    string
+): Promise<
+  WorkItem[]
+> {
+  const response =
+    await fetch(
+      `${DIRECTUS_URL}/items/garage_work_items?fields=id,vehicle.id,title,category,priority,status,work_description,odometer,target_date,started_date,completed_date,estimated_cost,notes,archived,sort&filter[vehicle][_eq]=${encodeURIComponent(
+        vehicleId
+      )}&filter[archived][_neq]=true&sort=priority,sort`,
+      {
+        headers:
+          directusHeaders,
+
+        cache:
+          "no-store",
+      }
+    );
 
   if (!response.ok) {
-    const error = await response.text();
+    const error =
+      await response.text();
 
     console.error(
       "Unable to load vehicle work items:",
@@ -415,7 +903,8 @@ export async function getVehicleWorkItems(
     );
   }
 
-  const result = await response.json();
+  const result =
+    await response.json();
 
   return (
     result.data as DirectusWorkItem[]
@@ -427,79 +916,105 @@ export async function getVehicleWorkItems(
   );
 }
 
-  /*
-  * SPECIFICATION TEMPLATES
-  */
+/* =========================================================
+   SPECIFICATION TEMPLATES
+   ========================================================= */
 
-  export async function getSpecTemplates(): Promise<
-    SpecTemplate[]
-  > {
-    const templateResponse =
-      await fetch(
-        `${DIRECTUS_URL}/items/garage_spec_templates?filter[active][_eq]=true&sort=sort,name`,
-        {
-          headers:
-            directusHeaders,
+export async function getSpecTemplates(): Promise<
+  SpecTemplate[]
+> {
+  const templateResponse =
+    await fetch(
+      `${DIRECTUS_URL}/items/garage_spec_templates?filter[active][_eq]=true&sort=sort,name`,
+      {
+        headers:
+          directusHeaders,
 
-          cache: "no-store",
-        }
-      );
+        cache:
+          "no-store",
+      }
+    );
 
-    if (
-      !templateResponse.ok
-    ) {
-      throw new Error(
-        `Unable to load specification templates: ${templateResponse.status}`
-      );
-    }
+  if (
+    !templateResponse.ok
+  ) {
+    const error =
+      await templateResponse.text();
 
-    const itemResponse =
-      await fetch(
-        `${DIRECTUS_URL}/items/garage_spec_template_items?sort=sort`,
-        {
-          headers:
-            directusHeaders,
+    console.error(
+      "Unable to load specification templates:",
+      templateResponse.status,
+      error
+    );
 
-          cache: "no-store",
-        }
-      );
+    throw new Error(
+      `Unable to load specification templates: ${templateResponse.status}`
+    );
+  }
 
-    if (!itemResponse.ok) {
-      throw new Error(
-        `Unable to load specification template items: ${itemResponse.status}`
-      );
-    }
+  const itemResponse =
+    await fetch(
+      `${DIRECTUS_URL}/items/garage_spec_template_items?sort=sort`,
+      {
+        headers:
+          directusHeaders,
 
-    const templateResult =
-      await templateResponse.json();
+        cache:
+          "no-store",
+      }
+    );
 
-    const itemResult =
-      await itemResponse.json();
+  if (
+    !itemResponse.ok
+  ) {
+    const error =
+      await itemResponse.text();
 
-    const templates =
-      templateResult.data as DirectusSpecTemplate[];
+    console.error(
+      "Unable to load specification template items:",
+      itemResponse.status,
+      error
+    );
 
-    const items =
-      itemResult.data as DirectusSpecTemplateItem[];
+    throw new Error(
+      `Unable to load specification template items: ${itemResponse.status}`
+    );
+  }
 
-    return templates.map(
-      (template) => {
-        const templateId =
-          String(template.id);
+  const templateResult =
+    await templateResponse.json();
 
-        return {
-          id: templateId,
+  const itemResult =
+    await itemResponse.json();
 
-          name:
-            template.name,
+  const templates =
+    templateResult.data as DirectusSpecTemplate[];
 
-          assetType:
-            template.asset_type,
+  const items =
+    itemResult.data as DirectusSpecTemplateItem[];
 
-          description:
-            template.description,
+  return templates.map(
+    (template) => {
+      const templateId =
+        String(
+          template.id
+        );
 
-          items: items
+      return {
+        id:
+          templateId,
+
+        name:
+          template.name,
+
+        assetType:
+          template.asset_type,
+
+        description:
+          template.description,
+
+        items:
+          items
             .filter(
               (item) => {
                 const itemTemplateId =
@@ -508,8 +1023,7 @@ export async function getVehicleWorkItems(
                   item.template !==
                     null
                     ? String(
-                        item.template
-                          .id
+                        item.template.id
                       )
                     : String(
                         item.template
@@ -521,12 +1035,12 @@ export async function getVehicleWorkItems(
                 );
               }
             )
-
             .map(
               (item) => ({
-                id: String(
-                  item.id
-                ),
+                id:
+                  String(
+                    item.id
+                  ),
 
                 category:
                   item.category ??
@@ -548,21 +1062,23 @@ export async function getVehicleWorkItems(
                   false,
               })
             ),
-        };
-      }
-    );
-  }
+      };
+    }
+  );
+}
 
-  /*
-  * VEHICLE SPECIFICATIONS
-  */
+/* =========================================================
+   VEHICLE SPECIFICATIONS
+   ========================================================= */
 
-  export async function getVehicleSpecifications(
-    vehicleId: string
-  ): Promise<
-    SpecificationRow[]
-  > {
-    const response = await fetch(
+export async function getVehicleSpecifications(
+  vehicleId:
+    string
+): Promise<
+  SpecificationRow[]
+> {
+  const response =
+    await fetch(
       `${DIRECTUS_URL}/items/garage_vehicle_specifications?filter[vehicle][_eq]=${encodeURIComponent(
         vehicleId
       )}&sort=sort`,
@@ -570,39 +1086,53 @@ export async function getVehicleWorkItems(
         headers:
           directusHeaders,
 
-        cache: "no-store",
+        cache:
+          "no-store",
       }
     );
 
-    if (!response.ok) {
-      throw new Error(
-        `Unable to load vehicle specifications: ${response.status}`
-      );
-    }
+  if (!response.ok) {
+    const error =
+      await response.text();
 
-    const result =
-      await response.json();
+    console.error(
+      "Unable to load vehicle specifications:",
+      response.status,
+      error
+    );
 
-    return (
-      result.data as DirectusVehicleSpecification[]
-    ).map((item) => ({
-      category:
-        item.category ?? "",
-
-      specification:
-        item.specification ??
-        "",
-
-      value:
-        item.value ?? "",
-
-      unit:
-        item.unit ?? "",
-
-      notes:
-        item.notes ?? "",
-
-      sort:
-        item.sort,
-    }));
+    throw new Error(
+      `Unable to load vehicle specifications: ${response.status}`
+    );
   }
+
+  const result =
+    await response.json();
+
+  return (
+    result.data as DirectusVehicleSpecification[]
+  ).map((item) => ({
+    category:
+      item.category ??
+      "",
+
+    specification:
+      item.specification ??
+      "",
+
+    value:
+      item.value ??
+      "",
+
+    unit:
+      item.unit ??
+      "",
+
+    notes:
+      item.notes ??
+      "",
+
+    sort:
+      item.sort,
+    }));
+}

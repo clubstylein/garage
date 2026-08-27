@@ -1,33 +1,97 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { Vehicle } from "@/lib/mock-data";
+
+import {
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  Vehicle,
+  WorkItem,
+} from "@/lib/mock-data";
+
+import VehicleCard from "@/components/vehicle-card";
 import VehicleWorkModal from "@/components/vehicle-work-modal";
 
-export default function GarageDashboard({
+/* =========================================================
+   CUSTOMER VIEW
+   ========================================================= */
+
+type CustomerView =
+  | "self-owned"
+  | "vip"
+  | "general"
+  | "all-customers"
+  | "wishlist"
+  | "all-vehicles";
+
+/* =========================================================
+   COMPONENT
+   ========================================================= */
+
+export default function VehiclesDashboard({
   vehicles,
+  workItems,
 }: {
   vehicles: Vehicle[];
+  workItems: WorkItem[];
 }) {
-  const [search, setSearch] = useState("");
-  const [ownership, setOwnership] = useState("All");
-  const [status, setStatus] = useState("All");
-  const [location, setLocation] = useState("All");
+  /* =======================================================
+     FILTERS
+     ======================================================= */
 
-  const [workVehicle, setWorkVehicle] =
-    useState<Vehicle | null>(null);
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
   /*
-   * HELPERS
+   * Default vehicle view.
    */
+
+  const [
+    customerView,
+    setCustomerView,
+  ] =
+    useState<CustomerView>(
+      "self-owned"
+    );
+
+  const [
+    status,
+    setStatus,
+  ] = useState("All");
+
+  const [
+    location,
+    setLocation,
+  ] = useState("All");
+
+  /* =======================================================
+     WORK MODAL
+     ======================================================= */
+
+  const [
+    workVehicle,
+    setWorkVehicle,
+  ] =
+    useState<Vehicle | null>(
+      null
+    );
+
+  /* =======================================================
+     HELPERS
+     ======================================================= */
 
   function isWishlistVehicle(
     vehicle: Vehicle
   ) {
     return (
       String(
-        vehicle.ownershipStatus || ""
+        vehicle.ownershipStatus ||
+          ""
       )
         .trim()
         .toLowerCase() ===
@@ -36,501 +100,1055 @@ export default function GarageDashboard({
   }
 
   /*
-   * BASE OWNED / WISHLIST
+   * Normalize the Directus category value.
+   *
+   * Database values:
+   *
+   * self-owned
+   * vip
+   * general
+   *
+   * This also tolerates old values such as:
+   *
+   * Self-owned
+   * VIP
+   * General
    */
 
-  const ownedVehicles = useMemo(
-    () =>
-      vehicles.filter(
-        (vehicle) =>
-          !isWishlistVehicle(vehicle)
-      ),
-    [vehicles]
-  );
-
-  const wishlistVehicles = useMemo(
-    () =>
-      vehicles.filter((vehicle) =>
-        isWishlistVehicle(vehicle)
-      ),
-    [vehicles]
-  );
-
-  /*
-   * LOCATIONS
-   */
-
-  const locations = useMemo(() => {
-    return Array.from(
-      new Set(
-        vehicles
-          .map(
-            (vehicle) =>
-              vehicle.location
-          )
-          .filter(Boolean)
-      )
-    ).sort();
-  }, [vehicles]);
-
-  /*
-   * FILTER FUNCTION
-   */
-
-  function vehicleMatchesFilters(
+  function getCustomerCategory(
     vehicle: Vehicle
   ) {
-    const query = search
+    const category =
+      vehicle.customer
+        ?.category ??
+      vehicle.customerCategory ??
+      "";
+
+    return String(category)
       .trim()
       .toLowerCase();
-
-    const wishlist =
-      isWishlistVehicle(vehicle);
-
-    const matchesSearch =
-      !query ||
-      vehicle.name
-        ?.toLowerCase()
-        .includes(query) ||
-      vehicle.make
-        ?.toLowerCase()
-        .includes(query) ||
-      vehicle.model
-        ?.toLowerCase()
-        .includes(query) ||
-      vehicle.variant
-        ?.toLowerCase()
-        .includes(query) ||
-      vehicle.registrationNumber
-        ?.toLowerCase()
-        .includes(query);
-
-    const matchesOwnership =
-      ownership === "All" ||
-      (ownership === "Wishlist" &&
-        wishlist) ||
-      (ownership === "Owned" &&
-        !wishlist);
-
-    const matchesStatus =
-      status === "All" ||
-      vehicle.status === status;
-
-    const matchesLocation =
-      location === "All" ||
-      vehicle.location === location;
-
-    return (
-      matchesSearch &&
-      matchesOwnership &&
-      matchesStatus &&
-      matchesLocation
-    );
   }
 
-  /*
-   * FILTERED SECTIONS
-   */
+  function getCustomerName(
+    vehicle: Vehicle
+  ) {
+    const name =
+      vehicle.customer
+        ?.name ??
+      vehicle.customerName ??
+      "";
 
-  const filteredOwned =
+    return String(
+      name
+    ).trim();
+  }
+
+  /* =======================================================
+     VEHICLE GROUPS
+     ======================================================= */
+
+  const wishlistVehicles =
     useMemo(() => {
-      return ownedVehicles.filter(
-        vehicleMatchesFilters
+      return vehicles.filter(
+        (vehicle) =>
+          isWishlistVehicle(
+            vehicle
+          )
       );
     }, [
-      ownedVehicles,
+      vehicles,
+    ]);
+
+  const nonWishlistVehicles =
+    useMemo(() => {
+      return vehicles.filter(
+        (vehicle) =>
+          !isWishlistVehicle(
+            vehicle
+          )
+      );
+    }, [
+      vehicles,
+    ]);
+
+  /*
+   * Self-owned
+   */
+
+  const selfOwnedVehicles =
+    useMemo(() => {
+      return nonWishlistVehicles.filter(
+        (vehicle) =>
+          getCustomerCategory(
+            vehicle
+          ) ===
+          "self-owned"
+      );
+    }, [
+      nonWishlistVehicles,
+    ]);
+
+  /*
+   * VIP customers
+   */
+
+  const vipVehicles =
+    useMemo(() => {
+      return nonWishlistVehicles.filter(
+        (vehicle) =>
+          getCustomerCategory(
+            vehicle
+          ) ===
+          "vip"
+      );
+    }, [
+      nonWishlistVehicles,
+    ]);
+
+  /*
+   * General customers
+   */
+
+  const generalVehicles =
+    useMemo(() => {
+      return nonWishlistVehicles.filter(
+        (vehicle) =>
+          getCustomerCategory(
+            vehicle
+          ) ===
+          "general"
+      );
+    }, [
+      nonWishlistVehicles,
+    ]);
+
+  /*
+   * Customer vehicles intentionally
+   * exclude ClubStyle Self-owned.
+   */
+
+  const customerVehicles =
+    useMemo(() => {
+      return nonWishlistVehicles.filter(
+        (vehicle) => {
+          const category =
+            getCustomerCategory(
+              vehicle
+            );
+
+          return (
+            category ===
+              "vip" ||
+            category ===
+              "general"
+          );
+        }
+      );
+    }, [
+      nonWishlistVehicles,
+    ]);
+
+  /* =======================================================
+     OPEN WORK COUNT
+     ======================================================= */
+
+  const openWorkCountByVehicle =
+    useMemo(() => {
+      const counts =
+        new Map<
+          string,
+          number
+        >();
+
+      for (
+        const item of
+        workItems
+      ) {
+        if (
+          item.status ===
+            "Completed" ||
+          item.status ===
+            "Cancelled"
+        ) {
+          continue;
+        }
+
+        const vehicleId =
+          String(
+            item.vehicleId
+          );
+
+        counts.set(
+          vehicleId,
+          (counts.get(
+            vehicleId
+          ) || 0) + 1
+        );
+      }
+
+      return counts;
+    }, [
+      workItems,
+    ]);
+
+  /* =======================================================
+     LOCATIONS
+     ======================================================= */
+
+  const locations =
+    useMemo(() => {
+      return Array.from(
+        new Set(
+          vehicles
+            .map(
+              (vehicle) =>
+                vehicle.location
+            )
+            .filter(
+              (
+                value
+              ): value is string =>
+                Boolean(value)
+            )
+        )
+      ).sort();
+    }, [
+      vehicles,
+    ]);
+
+  /* =======================================================
+     CUSTOMER VIEW FILTER
+     ======================================================= */
+
+  function matchesCustomerView(
+    vehicle: Vehicle
+  ) {
+    const wishlist =
+      isWishlistVehicle(
+        vehicle
+      );
+
+    const category =
+      getCustomerCategory(
+        vehicle
+      );
+
+    if (
+      customerView ===
+      "all-vehicles"
+    ) {
+      return true;
+    }
+
+    if (
+      customerView ===
+      "wishlist"
+    ) {
+      return wishlist;
+    }
+
+    /*
+     * Wishlist never appears inside
+     * customer category views.
+     */
+
+    if (wishlist) {
+      return false;
+    }
+
+    if (
+      customerView ===
+      "self-owned"
+    ) {
+      return (
+        category ===
+        "self-owned"
+      );
+    }
+
+    if (
+      customerView ===
+      "vip"
+    ) {
+      return (
+        category ===
+        "vip"
+      );
+    }
+
+    if (
+      customerView ===
+      "general"
+    ) {
+      return (
+        category ===
+        "general"
+      );
+    }
+
+    if (
+      customerView ===
+      "all-customers"
+    ) {
+      return (
+        category ===
+          "vip" ||
+        category ===
+          "general"
+      );
+    }
+
+    return false;
+  }
+
+  /* =======================================================
+     MAIN FILTER
+     ======================================================= */
+
+  const filteredVehicles =
+    useMemo(() => {
+      const query =
+        search
+          .trim()
+          .toLowerCase();
+
+      return vehicles.filter(
+        (vehicle) => {
+          /*
+           * CUSTOMER
+           */
+
+          if (
+            !matchesCustomerView(
+              vehicle
+            )
+          ) {
+            return false;
+          }
+
+          /*
+           * STATUS
+           */
+
+          if (
+            status !==
+              "All" &&
+            vehicle.status !==
+              status
+          ) {
+            return false;
+          }
+
+          /*
+           * LOCATION
+           */
+
+          if (
+            location !==
+              "All" &&
+            vehicle.location !==
+              location
+          ) {
+            return false;
+          }
+
+          /*
+           * SEARCH
+           */
+
+          if (!query) {
+            return true;
+          }
+
+          const text = [
+            vehicle.name,
+            vehicle.make,
+            vehicle.model,
+            vehicle.variant,
+            vehicle.registrationNumber,
+            vehicle.location,
+            getCustomerName(
+              vehicle
+            ),
+            getCustomerCategory(
+              vehicle
+            ),
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+          return text.includes(
+            query
+          );
+        }
+      );
+    }, [
+      vehicles,
       search,
-      ownership,
+      customerView,
       status,
       location,
     ]);
+
+  /* =======================================================
+     DISPLAY GROUPS
+     ======================================================= */
 
   const filteredWishlist =
     useMemo(() => {
-      return wishlistVehicles.filter(
-        vehicleMatchesFilters
+      return filteredVehicles.filter(
+        (vehicle) =>
+          isWishlistVehicle(
+            vehicle
+          )
       );
     }, [
-      wishlistVehicles,
-      search,
-      ownership,
-      status,
-      location,
+      filteredVehicles,
     ]);
 
-  /*
-   * STATS
-   *
-   * Running / Repair / Projects /
-   * For Parts count OWNED vehicles only.
-   */
-
-  const stats = {
-    all: vehicles.length,
-
-    owned:
-      ownedVehicles.length,
-
-    wishlist:
-      wishlistVehicles.length,
-
-    running:
-      ownedVehicles.filter(
+  const filteredNonWishlist =
+    useMemo(() => {
+      return filteredVehicles.filter(
         (vehicle) =>
-          vehicle.status ===
-          "Running"
-      ).length,
+          !isWishlistVehicle(
+            vehicle
+          )
+      );
+    }, [
+      filteredVehicles,
+    ]);
 
-    repair:
-      ownedVehicles.filter(
-        (vehicle) =>
-          vehicle.status ===
-          "Repair"
-      ).length,
+  /* =======================================================
+     STATS
+     ======================================================= */
 
-    projects:
-      ownedVehicles.filter(
-        (vehicle) =>
-          vehicle.status ===
-          "Custom Project"
-      ).length,
+  const stats =
+    useMemo(() => {
+      return {
+        selfOwned:
+          selfOwnedVehicles.length,
 
-    forParts:
-      ownedVehicles.filter(
-        (vehicle) =>
-          vehicle.status ===
-          "For Parts"
-      ).length,
-  };
+        customers:
+          customerVehicles.length,
 
-  const totalShown =
-    filteredOwned.length +
-    filteredWishlist.length;
+        vip:
+          vipVehicles.length,
+
+        wishlist:
+          wishlistVehicles.length,
+
+        running:
+          selfOwnedVehicles.filter(
+            (vehicle) =>
+              vehicle.status ===
+              "Running"
+          ).length,
+
+        repair:
+          selfOwnedVehicles.filter(
+            (vehicle) =>
+              vehicle.status ===
+              "Repair"
+          ).length,
+
+        projects:
+          selfOwnedVehicles.filter(
+            (vehicle) =>
+              vehicle.status ===
+              "Custom Project"
+          ).length,
+      };
+    }, [
+      selfOwnedVehicles,
+      customerVehicles,
+      vipVehicles,
+      wishlistVehicles,
+    ]);
+
+  /* =======================================================
+     HEADER ACTIONS
+     ======================================================= */
+
+  function showSelfOwned() {
+    setCustomerView(
+      "self-owned"
+    );
+
+    setStatus(
+      "All"
+    );
+  }
+
+  function showCustomers() {
+    setCustomerView(
+      "all-customers"
+    );
+
+    setStatus(
+      "All"
+    );
+  }
+
+  function showVip() {
+    setCustomerView(
+      "vip"
+    );
+
+    setStatus(
+      "All"
+    );
+  }
+
+  function showWishlist() {
+    setCustomerView(
+      "wishlist"
+    );
+
+    setStatus(
+      "All"
+    );
+  }
+
+  function showRunning() {
+    setCustomerView(
+      "self-owned"
+    );
+
+    setStatus(
+      "Running"
+    );
+  }
+
+  function showRepair() {
+    setCustomerView(
+      "self-owned"
+    );
+
+    setStatus(
+      "Repair"
+    );
+  }
+
+  function showProjects() {
+    setCustomerView(
+      "self-owned"
+    );
+
+    setStatus(
+      "Custom Project"
+    );
+  }
+
+  /* =======================================================
+     ACTIVE HEADER STATE
+     ======================================================= */
+
+  const selfOwnedActive =
+    customerView ===
+      "self-owned" &&
+    status ===
+      "All";
+
+  const customersActive =
+    customerView ===
+      "all-customers" &&
+    status ===
+      "All";
+
+  const vipActive =
+    customerView ===
+      "vip" &&
+    status ===
+      "All";
+
+  const wishlistActive =
+    customerView ===
+      "wishlist" &&
+    status ===
+      "All";
+
+  const runningActive =
+    customerView ===
+      "self-owned" &&
+    status ===
+      "Running";
+
+  const repairActive =
+    customerView ===
+      "self-owned" &&
+    status ===
+      "Repair";
+
+  const projectsActive =
+    customerView ===
+      "self-owned" &&
+    status ===
+      "Custom Project";
+
+  /* =======================================================
+     CLEAR
+     ======================================================= */
+
+  function clearFilters() {
+    setSearch("");
+
+    setCustomerView(
+      "self-owned"
+    );
+
+    setStatus(
+      "All"
+    );
+
+    setLocation(
+      "All"
+    );
+  }
+
+  const filtersActive =
+    search !== "" ||
+    customerView !==
+      "self-owned" ||
+    status !==
+      "All" ||
+    location !==
+      "All";
+
+  /* =======================================================
+     SECTION TITLE
+     ======================================================= */
+
+  function sectionTitle() {
+    switch (
+      customerView
+    ) {
+      case "self-owned":
+        return "Self-owned Vehicles";
+
+      case "vip":
+        return "VIP Customer Vehicles";
+
+      case "general":
+        return "General Customer Vehicles";
+
+      case "all-customers":
+        return "Customer Vehicles";
+
+      case "wishlist":
+        return "Wishlist";
+
+      case "all-vehicles":
+        return "Vehicles";
+
+      default:
+        return "Vehicles";
+    }
+  }
+
+  /* =======================================================
+     UI
+     ======================================================= */
 
   return (
     <main className="min-h-screen bg-[#f5f6f8] text-[#1d2228]">
       {/* HEADER */}
 
-      <div className="border-b border-[#e1e4e8] bg-white">
-        <div className="flex items-center justify-between px-5 py-7 lg:px-8">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Vehicles
-            </h1>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Owned vehicles and wishlist
-            </p>
-          </div>
-
-          <Link
-            href="/vehicles/new"
-            className="rounded-lg bg-[#1d2228] px-5 py-3 text-sm font-medium text-white hover:bg-black"
-          >
-            + Add Vehicle
-          </Link>
-        </div>
-      </div>
-
-      <div className="px-5 py-7 lg:px-8">
-        {/* SUMMARY */}
-
-<div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
-            <SummaryCard
-            label="All"
-            value={stats.all}
-          />
-
-          <SummaryCard
-            label="Owned"
-            value={stats.owned}
-          />
-
-          <SummaryCard
-            label="Wishlist"
-            value={
-              stats.wishlist
-            }
-            wishlist
-          />
-
-          <SummaryCard
-            label="Running"
-            value={
-              stats.running
-            }
-          />
-
-          <SummaryCard
-            label="Repair"
-            value={
-              stats.repair
-            }
-          />
-
-          <SummaryCard
-            label="Projects"
-            value={
-              stats.projects
-            }
-          />
-
-          <SummaryCard
-            label="For Parts"
-            value={
-              stats.forParts
-            }
-          />
-        </div>
-
-        {/* FILTER BAR */}
-
-        <section className="mt-8">
-          <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <section className="border-b border-[#e1e4e8] bg-white">
+        <div className="px-5 py-4 lg:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold">
+              <h1 className="text-2xl font-semibold tracking-tight">
                 Vehicles
-              </h2>
+              </h1>
 
               <p className="mt-1 text-sm text-gray-500">
-                {totalShown}{" "}
-                {totalShown === 1
-                  ? "vehicle"
-                  : "vehicles"}{" "}
-                shown
+                Self-owned and customer vehicles
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              {/* SEARCH */}
-
-              <input
-                type="search"
-                value={search}
-                onChange={(e) =>
-                  setSearch(
-                    e.target.value
-                  )
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <CompactStat
+                label="Self-owned"
+                value={
+                  stats.selfOwned
                 }
-                placeholder="Search vehicles..."
-                className="w-72 rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]"
+                active={
+                  selfOwnedActive
+                }
+                onClick={
+                  showSelfOwned
+                }
               />
 
-              {/* OWNERSHIP */}
-
-              <select
-                value={ownership}
-                onChange={(e) =>
-                  setOwnership(
-                    e.target.value
-                  )
+              <CompactStat
+                label="Customers"
+                value={
+                  stats.customers
                 }
-                className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm outline-none"
-              >
-                <option value="All">
-                  Owned + Wishlist
-                </option>
-
-                <option value="Owned">
-                  Owned
-                </option>
-
-                <option value="Wishlist">
-                  Wishlist
-                </option>
-              </select>
-
-              {/* STATUS */}
-
-              <select
-                value={status}
-                onChange={(e) =>
-                  setStatus(
-                    e.target.value
-                  )
+                active={
+                  customersActive
                 }
-                className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm outline-none"
-              >
-                <option value="All">
-                  All Status
-                </option>
-
-                <option value="Running">
-                  Running
-                </option>
-
-                <option value="Repair">
-                  Repair
-                </option>
-
-                <option value="Custom Project">
-                  Custom Project
-                </option>
-
-                <option value="For Parts">
-                  For Parts
-                </option>
-
-                <option value="Stored">
-                  Stored
-                </option>
-
-                <option value="Sold">
-                  Sold
-                </option>
-              </select>
-
-              {/* LOCATION */}
-
-              <select
-                value={location}
-                onChange={(e) =>
-                  setLocation(
-                    e.target.value
-                  )
+                onClick={
+                  showCustomers
                 }
-                className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm outline-none"
-              >
-                <option value="All">
-                  All Locations
-                </option>
+              />
 
-                {locations.map(
-                  (item) => (
-                    <option
-                      key={item}
-                      value={item}
-                    >
-                      {item}
-                    </option>
-                  )
-                )}
-              </select>
+              <CompactStat
+                label="VIP"
+                value={
+                  stats.vip
+                }
+                active={
+                  vipActive
+                }
+                onClick={
+                  showVip
+                }
+              />
+
+              <CompactStat
+                label="Wishlist"
+                value={
+                  stats.wishlist
+                }
+                active={
+                  wishlistActive
+                }
+                onClick={
+                  showWishlist
+                }
+                wishlist
+              />
+
+              <CompactStat
+                label="Running"
+                value={
+                  stats.running
+                }
+                active={
+                  runningActive
+                }
+                onClick={
+                  showRunning
+                }
+              />
+
+              <CompactStat
+                label="Repair"
+                value={
+                  stats.repair
+                }
+                active={
+                  repairActive
+                }
+                onClick={
+                  showRepair
+                }
+              />
+
+              <CompactStat
+                label="Projects"
+                value={
+                  stats.projects
+                }
+                active={
+                  projectsActive
+                }
+                onClick={
+                  showProjects
+                }
+              />
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* OWNED SECTION */}
+      {/* CONTENT */}
 
-          {ownership !==
-            "Wishlist" && (
-            <div>
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">
-                    Owned Vehicles
-                  </h2>
+      <div className="px-5 py-5 lg:px-8">
+        {/* FILTER BAR */}
 
-                  <p className="mt-1 text-sm text-gray-500">
-                    {
-                      filteredOwned.length
-                    }{" "}
-                    {filteredOwned.length ===
-                    1
-                      ? "vehicle"
-                      : "vehicles"}
-                  </p>
-                </div>
-              </div>
-
-              {filteredOwned.length >
-              0 ? (
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                  {filteredOwned.map(
-                    (vehicle) => (
-                      <VehicleCard
-                        key={
-                          vehicle.id
-                        }
-                        vehicle={
-                          vehicle
-                        }
-                        onWork={() =>
-                          setWorkVehicle(
-                            vehicle
-                          )
-                        }
-                      />
-                    )
-                  )}
-                </div>
-              ) : (
-                <EmptySection text="No owned vehicles match the selected filters." />
-              )}
-            </div>
-          )}
-
-          {/* WISHLIST SECTION */}
-
-          {ownership !==
-            "Owned" && (
-            <div
-              className={
-                ownership ===
-                "Wishlist"
-                  ? ""
-                  : "mt-10"
+        <div className="mb-6 rounded-xl border border-[#dfe2e6] bg-white p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:flex-nowrap lg:items-center">
+            <input
+              type="search"
+              value={
+                search
               }
+              onChange={(e) =>
+                setSearch(
+                  e.target.value
+                )
+              }
+              placeholder="Search vehicle or customer..."
+              className={`${inputClass} lg:flex-[2]`}
+            />
+
+            <select
+              value={
+                customerView
+              }
+              onChange={(e) =>
+                setCustomerView(
+                  e.target
+                    .value as CustomerView
+                )
+              }
+              className={`${inputClass} lg:min-w-[180px] lg:flex-1`}
             >
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-semibold">
-                      Wishlist
-                    </h2>
+              <option value="self-owned">
+                Self-owned
+              </option>
 
-                    <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
-                      ★
-                    </span>
-                  </div>
+              <option value="vip">
+                VIP
+              </option>
 
-                  <p className="mt-1 text-sm text-gray-500">
-                    {
-                      filteredWishlist.length
-                    }{" "}
-                    {filteredWishlist.length ===
-                    1
-                      ? "vehicle"
-                      : "vehicles"}
-                  </p>
-                </div>
+              <option value="general">
+                General
+              </option>
+
+              <option value="all-customers">
+                All Customers
+              </option>
+
+              <option value="wishlist">
+                Wishlist
+              </option>
+
+              <option value="all-vehicles">
+                All Vehicles
+              </option>
+            </select>
+
+            <select
+              value={
+                status
+              }
+              onChange={(e) =>
+                setStatus(
+                  e.target.value
+                )
+              }
+              className={`${inputClass} lg:min-w-[160px] lg:flex-1`}
+            >
+              <option value="All">
+                All Status
+              </option>
+
+              <option value="Running">
+                Running
+              </option>
+
+              <option value="Repair">
+                Repair
+              </option>
+
+              <option value="Custom Project">
+                Custom Project
+              </option>
+
+              <option value="For Parts">
+                For Parts
+              </option>
+
+              <option value="Stored">
+                Stored
+              </option>
+
+              <option value="Sold">
+                Sold
+              </option>
+            </select>
+
+            <select
+              value={
+                location
+              }
+              onChange={(e) =>
+                setLocation(
+                  e.target.value
+                )
+              }
+              className={`${inputClass} lg:min-w-[160px] lg:flex-1`}
+            >
+              <option value="All">
+                All Locations
+              </option>
+
+              {locations.map(
+                (item) => (
+                  <option
+                    key={
+                      item
+                    }
+                    value={
+                      item
+                    }
+                  >
+                    {item}
+                  </option>
+                )
+              )}
+            </select>
+
+            <button
+              type="button"
+              onClick={
+                clearFilters
+              }
+              disabled={
+                !filtersActive
+              }
+              className="h-[42px] shrink-0 whitespace-nowrap rounded-lg border border-[#d8dce1] bg-white px-4 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Clear
+            </button>
+
+            <Link
+              href="/vehicles/new"
+              className="inline-flex h-[42px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-[#1d2228] px-5 text-sm font-medium text-white hover:bg-black"
+            >
+              + Add Vehicle
+            </Link>
+          </div>
+        </div>
+
+        {/* NON-WISHLIST VEHICLES */}
+
+        {customerView !==
+          "wishlist" && (
+          <section>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold">
+                {sectionTitle()}
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                {
+                  filteredNonWishlist.length
+                }{" "}
+                {filteredNonWishlist.length ===
+                1
+                  ? "vehicle"
+                  : "vehicles"}
+              </p>
+            </div>
+
+            {filteredNonWishlist.length >
+            0 ? (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {filteredNonWishlist.map(
+                  (vehicle) => (
+                    <VehicleCard
+                      key={
+                        vehicle.id
+                      }
+                      vehicle={
+                        vehicle
+                      }
+                      workCount={
+                        openWorkCountByVehicle.get(
+                          String(
+                            vehicle.id
+                          )
+                        ) || 0
+                      }
+                      onWork={() =>
+                        setWorkVehicle(
+                          vehicle
+                        )
+                      }
+                    />
+                  )
+                )}
+              </div>
+            ) : (
+              <EmptySection
+                text={`No ${sectionTitle().toLowerCase()} match the selected filters.`}
+              />
+            )}
+          </section>
+        )}
+
+        {/* WISHLIST */}
+
+        {(customerView ===
+          "wishlist" ||
+          customerView ===
+            "all-vehicles") && (
+          <section
+            className={
+              customerView ===
+              "all-vehicles"
+                ? "mt-10"
+                : ""
+            }
+          >
+            <div className="mb-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold">
+                  Wishlist
+                </h2>
+
+                <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                  ★
+                </span>
               </div>
 
-              {filteredWishlist.length >
-              0 ? (
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                  {filteredWishlist.map(
-                    (vehicle) => (
-                      <VehicleCard
-                        key={
-                          vehicle.id
-                        }
-                        vehicle={
-                          vehicle
-                        }
-                        wishlist
-                        onWork={() =>
-                          setWorkVehicle(
-                            vehicle
-                          )
-                        }
-                      />
-                    )
-                  )}
-                </div>
-              ) : (
-                <EmptySection text="No wishlist vehicles match the selected filters." />
-              )}
+              <p className="mt-1 text-sm text-gray-500">
+                {
+                  filteredWishlist.length
+                }{" "}
+                {filteredWishlist.length ===
+                1
+                  ? "vehicle"
+                  : "vehicles"}
+              </p>
             </div>
-          )}
-        </section>
+
+            {filteredWishlist.length >
+            0 ? (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {filteredWishlist.map(
+                  (vehicle) => (
+                    <VehicleCard
+                      key={
+                        vehicle.id
+                      }
+                      vehicle={
+                        vehicle
+                      }
+                      wishlist
+                      workCount={
+                        0
+                      }
+                      onWork={() =>
+                        setWorkVehicle(
+                          vehicle
+                        )
+                      }
+                    />
+                  )
+                )}
+              </div>
+            ) : (
+              <EmptySection text="No wishlist vehicles match the selected filters." />
+            )}
+          </section>
+        )}
       </div>
 
-      {/* WORK POPUP */}
+      {/* WORK MODAL */}
 
       {workVehicle && (
         <VehicleWorkModal
           vehicle={
             workVehicle
+          }
+          vehicles={
+            nonWishlistVehicles
           }
           onClose={() =>
             setWorkVehicle(
@@ -543,226 +1161,83 @@ export default function GarageDashboard({
   );
 }
 
-/*
- * VEHICLE CARD
- */
+/* =========================================================
+   INPUT
+   ========================================================= */
 
-function VehicleCard({
-  vehicle,
+const inputClass =
+  "h-[42px] w-full min-w-0 rounded-lg border border-[#d8dce1] bg-white px-3 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]";
+
+/* =========================================================
+   COMPACT STAT
+   ========================================================= */
+
+function CompactStat({
+  label,
+  value,
+  active = false,
+  onClick,
   wishlist = false,
-  onWork,
 }: {
-  vehicle: Vehicle;
+  label: string;
+
+  value: number;
+
+  active?: boolean;
+
+  onClick: () => void;
+
   wishlist?: boolean;
-  onWork: () => void;
 }) {
+  let classes =
+    "border-[#dfe2e6] bg-[#fafafa] text-[#1d2228] hover:border-[#aeb4bb] hover:bg-white";
+
+  let labelClasses =
+    "text-gray-400";
+
+  if (
+    wishlist &&
+    !active
+  ) {
+    classes =
+      "border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400";
+
+    labelClasses =
+      "text-amber-700";
+  }
+
+  if (active) {
+    classes =
+      "border-[#1d2228] bg-[#1d2228] text-white";
+
+    labelClasses =
+      "text-gray-300";
+  }
+
   return (
-    <div
-      className={`group min-w-0 overflow-hidden rounded-xl border transition hover:shadow-sm ${
-        wishlist
-          ? "border-amber-300 bg-amber-50 hover:border-amber-400"
-          : "border-[#dfe2e6] bg-white hover:border-[#bfc4ca]"
-      }`}
+    <button
+      type="button"
+      onClick={
+        onClick
+      }
+      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 transition ${classes}`}
     >
-      {/* IMAGE */}
-
-      <div
-        className={`relative h-44 w-full overflow-hidden ${
-          wishlist
-            ? "bg-amber-100/60"
-            : "bg-[#e9ebee]"
-        }`}
+      <span
+        className={`text-[11px] font-medium uppercase tracking-wide ${labelClasses}`}
       >
-        {vehicle.coverImage ? (
-          <img
-            src={
-              vehicle.coverImage
-            }
-            alt={
-              vehicle.name
-            }
-            className="block h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">
-            Vehicle Photo
-          </div>
-        )}
+        {label}
+      </span>
 
-        {/* BADGES */}
-
-        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          {wishlist && (
-            <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 shadow-sm">
-              ★ Wishlist
-            </span>
-          )}
-
-          {!wishlist && (
-            <StatusBadge
-              status={
-                vehicle.status
-              }
-            />
-          )}
-        </div>
-
-        {/* ACTIONS */}
-
-        <div className="absolute right-3 top-3 flex gap-1.5">
-          {/* VIEW */}
-
-          <Link
-            href={`/vehicles/${vehicle.id}`}
-            title="View vehicle details"
-            aria-label="View vehicle details"
-            className={
-              iconButtonClass
-            }
-          >
-            <EyeIcon />
-          </Link>
-
-          {/* EDIT */}
-
-          <Link
-            href={`/vehicles/${vehicle.id}/edit`}
-            title="Edit vehicle"
-            aria-label="Edit vehicle"
-            className={
-              iconButtonClass
-            }
-          >
-            <EditIcon />
-          </Link>
-
-          {/* WORK */}
-
-          <button
-            type="button"
-            onClick={onWork}
-            title="View, edit or add work items"
-            aria-label="View, edit or add work items"
-            className={
-              iconButtonClass
-            }
-          >
-            <WorkIcon />
-          </button>
-        </div>
-      </div>
-
-      {/* DETAILS */}
-
-      <Link
-        href={`/vehicles/${vehicle.id}`}
-        className="block p-4"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="min-w-0 truncate text-base font-semibold">
-            {vehicle.name}
-          </h3>
-
-          {wishlist && (
-            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-              Wishlist
-            </span>
-          )}
-        </div>
-
-        <p className="mt-1 truncate text-sm text-gray-500">
-          {vehicle.year} ·{" "}
-          {vehicle.make}
-        </p>
-
-        <div
-          className={`my-4 border-t ${
-            wishlist
-              ? "border-amber-200"
-              : "border-[#e7e8ea]"
-          }`}
-        />
-
-        {/* OWNED DETAILS */}
-
-        {!wishlist ? (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                Odometer
-              </p>
-
-              <p className="mt-1 truncate text-sm">
-                {formatNumber(
-                  vehicle.odometer
-                )}{" "}
-                {vehicle.odometerUnit ||
-                  "km"}
-              </p>
-            </div>
-
-            <div className="min-w-0 text-right">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                Location
-              </p>
-
-              <p className="mt-1 truncate text-sm">
-                {vehicle.location ||
-                  "—"}
-              </p>
-            </div>
-          </div>
-        ) : (
-          /* WISHLIST DETAILS */
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-amber-700/70">
-                Model
-              </p>
-
-              <p className="mt-1 truncate text-sm">
-                {vehicle.model ||
-                  "—"}
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-amber-700/70">
-                Variant
-              </p>
-
-              <p className="mt-1 truncate text-sm">
-                {vehicle.variant ||
-                  "—"}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ENGINE */}
-
-        <div
-          className={`mt-4 truncate text-xs ${
-            wishlist
-              ? "text-amber-700/70"
-              : "text-gray-400"
-          }`}
-        >
-          {vehicle.engine
-            ? vehicle.engine
-            : vehicle.engineCc
-              ? `${vehicle.engineCc} cc`
-              : "Engine details not added"}
-        </div>
-      </Link>
-    </div>
+      <span className="text-sm font-semibold">
+        {value}
+      </span>
+    </button>
   );
 }
 
-/*
- * EMPTY SECTION
- */
+/* =========================================================
+   EMPTY SECTION
+   ========================================================= */
 
 function EmptySection({
   text,
@@ -774,173 +1249,4 @@ function EmptySection({
       {text}
     </div>
   );
-}
-
-/*
- * ACTION BUTTON STYLE
- */
-
-const iconButtonClass =
-  "flex h-8 w-8 items-center justify-center rounded-lg border border-white/60 bg-white/90 text-[#1d2228] shadow-sm backdrop-blur transition hover:bg-white hover:shadow";
-
-/*
- * ICONS
- */
-
-function EyeIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-
-      <circle
-        cx="12"
-        cy="12"
-        r="3"
-      />
-    </svg>
-  );
-}
-
-function EditIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 20h9" />
-
-      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
-    </svg>
-  );
-}
-
-function WorkIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M14.7 6.3a4 4 0 0 0-5-5l2.3 2.3-2.8 2.8-2.3-2.3a4 4 0 0 0 5 5L20 17.2a2 2 0 1 1-2.8 2.8l-7.9-7.9" />
-    </svg>
-  );
-}
-
-/*
- * SUMMARY CARD
- */
-
-function SummaryCard({
-  label,
-  value,
-  wishlist = false,
-}: {
-  label: string;
-  value: number;
-  wishlist?: boolean;
-}) {
-  return (
-    <div
-      className={`min-w-0 rounded-xl border px-4 py-4 ${
-        wishlist
-          ? "border-amber-300 bg-amber-50"
-          : "border-[#dfe2e6] bg-white"
-      }`}
-    >
-      <div
-        className={`text-xs font-medium uppercase tracking-wide ${
-          wishlist
-            ? "text-amber-700"
-            : "text-gray-400"
-        }`}
-      >
-        {label}
-      </div>
-
-      <div className="mt-3 text-2xl font-semibold">
-        {value}
-      </div>
-    </div>
-  );
-}
-
-/*
- * STATUS BADGE
- */
-
-function StatusBadge({
-  status,
-}: {
-  status: string;
-}) {
-  const styles: Record<
-    string,
-    string
-  > = {
-    Running:
-      "bg-green-100 text-green-700",
-
-    Repair:
-      "bg-red-100 text-red-700",
-
-    "Custom Project":
-      "bg-purple-100 text-purple-700",
-
-    "For Parts":
-      "bg-orange-100 text-orange-700",
-
-    Stored:
-      "bg-gray-100 text-gray-700",
-
-    Sold:
-      "bg-blue-100 text-blue-700",
-  };
-
-  return (
-    <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium shadow-sm ${
-        styles[status] ||
-        "bg-gray-100 text-gray-700"
-      }`}
-    >
-      {status}
-    </span>
-  );
-}
-
-/*
- * FORMAT NUMBER
- */
-
-function formatNumber(
-  value?: number
-) {
-  if (
-    value === undefined ||
-    value === null
-  ) {
-    return "0";
-  }
-
-  return value.toLocaleString();
 }

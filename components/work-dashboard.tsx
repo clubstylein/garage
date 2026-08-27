@@ -33,64 +33,153 @@ export default function WorkDashboard({
   const router =
     useRouter();
 
+  /* =======================================================
+     FILTERS
+     ======================================================= */
+
   const [
     search,
     setSearch,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     vehicleFilter,
     setVehicleFilter,
-  ] = useState("All");
+  ] =
+    useState("All");
 
   const [
     statusFilter,
     setStatusFilter,
-  ] = useState("All");
+  ] =
+    useState("All");
 
   const [
     priorityFilter,
     setPriorityFilter,
-  ] = useState("All");
+  ] =
+    useState("All");
 
   const [
     categoryFilter,
     setCategoryFilter,
-  ] = useState("All");
+  ] =
+    useState("All");
 
-  /*
-   * WORK MODAL
-   */
+  /* =======================================================
+     WORK MODAL
+     ======================================================= */
 
   const [
     workModal,
     setWorkModal,
   ] =
-    useState<WorkModalState | null>(
-      null
-    );
+    useState<
+      WorkModalState | null
+    >(null);
 
-  /*
-   * NON-WISHLIST VEHICLES
-   */
+  /* =======================================================
+     HELPERS
+     ======================================================= */
+
+  function isWishlistVehicle(
+    vehicle: Vehicle
+  ) {
+    return (
+      String(
+        vehicle.ownershipStatus ||
+          ""
+      )
+        .trim()
+        .toLowerCase() ===
+      "wishlist"
+    );
+  }
+
+  function getCustomerName(
+    vehicle: Vehicle
+  ) {
+    return String(
+      vehicle.customerName ??
+        vehicle.customer?.name ??
+        ""
+    ).trim();
+  }
+
+  function getCustomerCode(
+    vehicle: Vehicle
+  ) {
+    return String(
+      vehicle.customerCode ??
+        vehicle.customer
+          ?.customerCode ??
+        ""
+    ).trim();
+  }
+
+  function getCustomerCategory(
+    vehicle: Vehicle
+  ) {
+    return String(
+      vehicle.customerCategory ??
+        vehicle.customer
+          ?.category ??
+        ""
+    )
+      .trim()
+      .toLowerCase();
+  }
+
+  function formatCustomerCategory(
+    category: string
+  ) {
+    const value =
+      String(category)
+        .trim()
+        .toLowerCase();
+
+    if (
+      value ===
+      "self-owned"
+    ) {
+      return "Self-owned";
+    }
+
+    if (
+      value ===
+      "vip"
+    ) {
+      return "VIP";
+    }
+
+    if (
+      value ===
+      "general"
+    ) {
+      return "General";
+    }
+
+    return category;
+  }
+
+  /* =======================================================
+     WORK VEHICLES
+     ======================================================= */
 
   const workVehicles =
     useMemo(() => {
       return vehicles.filter(
         (vehicle) =>
-          String(
-            vehicle.ownershipStatus ||
-              ""
-          ).toLowerCase() !==
-          "wishlist"
+          !isWishlistVehicle(
+            vehicle
+          )
       );
     }, [vehicles]);
 
-  /*
-   * VEHICLE LOOKUP
-   *
-   * Always normalize IDs to strings.
-   */
+  /* =======================================================
+     VEHICLE LOOKUP
+     ======================================================= */
 
   const vehicleMap =
     useMemo(() => {
@@ -110,45 +199,9 @@ export default function WorkDashboard({
       );
     }, [workVehicles]);
 
-  /*
-   * CATEGORIES
-   */
-
-  const categories =
-    useMemo(() => {
-      return Array.from(
-        new Set(
-          workItems
-            .filter(
-              (item) =>
-                vehicleMap.has(
-                  String(
-                    item.vehicleId
-                  )
-                )
-            )
-            .map(
-              (item) =>
-                item.category
-            )
-            .filter(
-              (
-                value
-              ): value is string =>
-                Boolean(value)
-            )
-        )
-      ).sort();
-    }, [
-      workItems,
-      vehicleMap,
-    ]);
-
-  /*
-   * VALID WORK ITEMS
-   *
-   * Excludes Wishlist vehicles.
-   */
+  /* =======================================================
+     VALID WORK
+     ======================================================= */
 
   const validWorkItems =
     useMemo(() => {
@@ -165,9 +218,49 @@ export default function WorkDashboard({
       vehicleMap,
     ]);
 
-  /*
-   * FILTERED ITEMS
-   */
+  /* =======================================================
+     CATEGORIES
+     ======================================================= */
+
+  const categories =
+    useMemo(() => {
+      return Array.from(
+        new Set(
+          validWorkItems
+            .map(
+              (item) =>
+                item.category
+            )
+            .filter(
+              (
+                value
+              ): value is string =>
+                Boolean(value)
+            )
+        )
+      ).sort();
+    }, [
+      validWorkItems,
+    ]);
+
+  /* =======================================================
+     OPEN WORK
+     ======================================================= */
+
+  function isOpenWork(
+    item: WorkItem
+  ) {
+    return (
+      item.status !==
+        "Completed" &&
+      item.status !==
+        "Cancelled"
+    );
+  }
+
+  /* =======================================================
+     FILTERED ITEMS
+     ======================================================= */
 
   const filteredItems =
     useMemo(() => {
@@ -192,29 +285,40 @@ export default function WorkDashboard({
             return false;
           }
 
+          const searchText =
+            [
+              item.title,
+              item.category,
+              item.workDescription,
+              item.notes,
+
+              vehicle.name,
+              vehicle.make,
+              vehicle.model,
+              vehicle.variant,
+              vehicle.registrationNumber,
+
+              getCustomerName(
+                vehicle
+              ),
+
+              getCustomerCode(
+                vehicle
+              ),
+
+              getCustomerCategory(
+                vehicle
+              ),
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase();
+
           const matchesSearch =
             !query ||
-            item.title
-              ?.toLowerCase()
-              .includes(query) ||
-            item.category
-              ?.toLowerCase()
-              .includes(query) ||
-            item.workDescription
-              ?.toLowerCase()
-              .includes(query) ||
-            item.notes
-              ?.toLowerCase()
-              .includes(query) ||
-            vehicle.name
-              ?.toLowerCase()
-              .includes(query) ||
-            vehicle.make
-              ?.toLowerCase()
-              .includes(query) ||
-            vehicle.model
-              ?.toLowerCase()
-              .includes(query);
+            searchText.includes(
+              query
+            );
 
           const matchesVehicle =
             vehicleFilter ===
@@ -224,11 +328,25 @@ export default function WorkDashboard({
                 vehicleFilter
               );
 
-          const matchesStatus =
+          let matchesStatus =
+            true;
+
+          if (
             statusFilter ===
-              "All" ||
-            item.status ===
+            "Open"
+          ) {
+            matchesStatus =
+              isOpenWork(
+                item
+              );
+          } else if (
+            statusFilter !==
+            "All"
+          ) {
+            matchesStatus =
+              item.status ===
               statusFilter;
+          }
 
           const matchesPriority =
             priorityFilter ===
@@ -264,19 +382,15 @@ export default function WorkDashboard({
       categoryFilter,
     ]);
 
-  /*
-   * STATS
-   */
+  /* =======================================================
+     STATS
+     ======================================================= */
 
   const stats =
     useMemo(() => {
       const open =
         validWorkItems.filter(
-          (item) =>
-            item.status !==
-              "Completed" &&
-            item.status !==
-              "Cancelled"
+          isOpenWork
         ).length;
 
       const priority1 =
@@ -286,10 +400,9 @@ export default function WorkDashboard({
               item.priority ??
                 3
             ) === 1 &&
-            item.status !==
-              "Completed" &&
-            item.status !==
-              "Cancelled"
+            isOpenWork(
+              item
+            )
         ).length;
 
       const partsRequired =
@@ -322,9 +435,93 @@ export default function WorkDashboard({
       validWorkItems,
     ]);
 
-  /*
-   * EDIT EXISTING WORK
-   */
+  /* =======================================================
+     SUMMARY ACTIONS
+     ======================================================= */
+
+  function showTotal() {
+    setStatusFilter(
+      "All"
+    );
+
+    setPriorityFilter(
+      "All"
+    );
+  }
+
+  function showOpen() {
+    setStatusFilter(
+      "Open"
+    );
+
+    setPriorityFilter(
+      "All"
+    );
+  }
+
+  function showPriority1() {
+    setStatusFilter(
+      "Open"
+    );
+
+    setPriorityFilter(
+      "1"
+    );
+  }
+
+  function showPartsRequired() {
+    setStatusFilter(
+      "Parts Required"
+    );
+
+    setPriorityFilter(
+      "All"
+    );
+  }
+
+  function showInProgress() {
+    setStatusFilter(
+      "In Progress"
+    );
+
+    setPriorityFilter(
+      "All"
+    );
+  }
+
+  const totalActive =
+    statusFilter ===
+      "All" &&
+    priorityFilter ===
+      "All";
+
+  const openActive =
+    statusFilter ===
+      "Open" &&
+    priorityFilter ===
+      "All";
+
+  const p1Active =
+    statusFilter ===
+      "Open" &&
+    priorityFilter ===
+      "1";
+
+  const partsActive =
+    statusFilter ===
+      "Parts Required" &&
+    priorityFilter ===
+      "All";
+
+  const progressActive =
+    statusFilter ===
+      "In Progress" &&
+    priorityFilter ===
+      "All";
+
+  /* =======================================================
+     EDIT
+     ======================================================= */
 
   function openEdit(
     item: WorkItem
@@ -348,15 +545,11 @@ export default function WorkDashboard({
     });
   }
 
-  /*
-   * ADD WORK
-   */
+  /* =======================================================
+     ADD
+     ======================================================= */
 
   function startAddWork() {
-    /*
-     * If page is filtered to one vehicle,
-     * open Add Work already locked to it.
-     */
     if (
       vehicleFilter !==
       "All"
@@ -377,16 +570,12 @@ export default function WorkDashboard({
       }
     }
 
-    /*
-     * Otherwise open shared modal
-     * with vehicle selector.
-     */
     setWorkModal({});
   }
 
-  /*
-   * CLEAR FILTERS
-   */
+  /* =======================================================
+     CLEAR
+     ======================================================= */
 
   function clearFilters() {
     setSearch("");
@@ -419,24 +608,38 @@ export default function WorkDashboard({
     categoryFilter !==
       "All";
 
+  /* =======================================================
+     UI
+     ======================================================= */
+
   return (
     <main className="min-h-screen bg-[#f5f6f8] text-[#1d2228]">
-      {/* =====================================================
-          COMPACT HEADER
-          ===================================================== */}
+      {/* HEADER */}
 
       <section className="border-b border-[#e1e4e8] bg-white">
         <div className="px-5 py-4 lg:px-8">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Work
-            </h1>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Work
+              </h1>
 
-            <div className="flex flex-wrap items-center gap-2">
+              <p className="mt-1 text-sm text-gray-500">
+                Workshop jobs across self-owned and customer vehicles
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <CompactStat
                 label="Total"
                 value={
                   stats.total
+                }
+                active={
+                  totalActive
+                }
+                onClick={
+                  showTotal
                 }
               />
 
@@ -445,12 +648,24 @@ export default function WorkDashboard({
                 value={
                   stats.open
                 }
+                active={
+                  openActive
+                }
+                onClick={
+                  showOpen
+                }
               />
 
               <CompactStat
                 label="P1"
                 value={
                   stats.priority1
+                }
+                active={
+                  p1Active
+                }
+                onClick={
+                  showPriority1
                 }
               />
 
@@ -459,6 +674,12 @@ export default function WorkDashboard({
                 value={
                   stats.partsRequired
                 }
+                active={
+                  partsActive
+                }
+                onClick={
+                  showPartsRequired
+                }
               />
 
               <CompactStat
@@ -466,99 +687,81 @@ export default function WorkDashboard({
                 value={
                   stats.inProgress
                 }
+                active={
+                  progressActive
+                }
+                onClick={
+                  showInProgress
+                }
               />
             </div>
           </div>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Workshop jobs across all vehicles
-          </p>
         </div>
       </section>
 
-      {/* =====================================================
-          CONTENT
-          ===================================================== */}
+      {/* CONTENT */}
 
       <div className="px-5 py-5 lg:px-8">
-        <section>
-          {/* WORK ITEMS TITLE */}
+        {/* FILTER BAR */}
 
-          <div className="mb-3">
-            <h2 className="text-xl font-semibold">
-              Work Items
-            </h2>
+        <div className="mb-5 rounded-xl border border-[#dfe2e6] bg-white p-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:flex-nowrap xl:items-center">
+            <input
+              type="search"
+              value={
+                search
+              }
+              onChange={(
+                event
+              ) =>
+                setSearch(
+                  event.target
+                    .value
+                )
+              }
+              placeholder="Search work, vehicle or customer..."
+              className={`${inputClass} xl:min-w-[260px] xl:flex-[2.2]`}
+            />
 
-            <p className="mt-1 text-sm text-gray-500">
-              {
-                filteredItems.length
-              }{" "}
-              {filteredItems.length ===
-              1
-                ? "work item"
-                : "work items"}{" "}
-              shown
-            </p>
-          </div>
+            <select
+              value={
+                vehicleFilter
+              }
+              onChange={(
+                event
+              ) =>
+                setVehicleFilter(
+                  event.target
+                    .value
+                )
+              }
+              className={`${inputClass} xl:min-w-[180px] xl:flex-[1.5]`}
+            >
+              <option value="All">
+                All Vehicles
+              </option>
 
-          {/* =================================================
-              FILTERS + ADD WORK
-              ================================================= */}
+              {workVehicles
+                .slice()
+                .sort(
+                  (
+                    a,
+                    b
+                  ) =>
+                    a.name.localeCompare(
+                      b.name
+                    )
+                )
+                .map(
+                  (
+                    vehicle
+                  ) => {
+                    const customerName =
+                      getCustomerName(
+                        vehicle
+                      );
 
-          <div className="mb-5 rounded-xl border border-[#dfe2e6] bg-white p-4">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1.4fr_1fr_1fr_1.2fr_auto_auto]">
-              {/* SEARCH */}
-
-              <input
-                type="search"
-                value={
-                  search
-                }
-                onChange={(e) =>
-                  setSearch(
-                    e.target
-                      .value
-                  )
-                }
-                placeholder="Search work or vehicle..."
-                className={
-                  inputClass
-                }
-              />
-
-              {/* VEHICLE */}
-
-              <select
-                value={
-                  vehicleFilter
-                }
-                onChange={(e) =>
-                  setVehicleFilter(
-                    e.target
-                      .value
-                  )
-                }
-                className={
-                  inputClass
-                }
-              >
-                <option value="All">
-                  All Vehicles
-                </option>
-
-                {workVehicles
-                  .slice()
-                  .sort(
-                    (
-                      a,
-                      b
-                    ) =>
-                      a.name.localeCompare(
-                        b.name
-                      )
-                  )
-                  .map(
-                    (vehicle) => (
+                    return (
                       <option
                         key={
                           vehicle.id
@@ -567,286 +770,404 @@ export default function WorkDashboard({
                           vehicle.id
                         )}
                       >
-                        {
-                          vehicle.name
-                        }
+                        {vehicle.name}
+                        {customerName
+                          ? ` — ${customerName}`
+                          : ""}
                       </option>
-                    )
-                  )}
-              </select>
-
-              {/* STATUS */}
-
-              <select
-                value={
-                  statusFilter
-                }
-                onChange={(e) =>
-                  setStatusFilter(
-                    e.target
-                      .value
-                  )
-                }
-                className={
-                  inputClass
-                }
-              >
-                <option value="All">
-                  All Status
-                </option>
-
-                <option value="Idea">
-                  Idea
-                </option>
-
-                <option value="Planned">
-                  Planned
-                </option>
-
-                <option value="Parts Required">
-                  Parts Required
-                </option>
-
-                <option value="Parts Ordered">
-                  Parts Ordered
-                </option>
-
-                <option value="Ready">
-                  Ready
-                </option>
-
-                <option value="In Progress">
-                  In Progress
-                </option>
-
-                <option value="On Hold">
-                  On Hold
-                </option>
-
-                <option value="Completed">
-                  Completed
-                </option>
-
-                <option value="Cancelled">
-                  Cancelled
-                </option>
-              </select>
-
-              {/* PRIORITY */}
-
-              <select
-                value={
-                  priorityFilter
-                }
-                onChange={(e) =>
-                  setPriorityFilter(
-                    e.target
-                      .value
-                  )
-                }
-                className={
-                  inputClass
-                }
-              >
-                <option value="All">
-                  All Priority
-                </option>
-
-                <option value="1">
-                  P1 — Urgent
-                </option>
-
-                <option value="2">
-                  P2 — High
-                </option>
-
-                <option value="3">
-                  P3 — Normal
-                </option>
-
-                <option value="4">
-                  P4 — Low
-                </option>
-              </select>
-
-              {/* CATEGORY */}
-
-              <select
-                value={
-                  categoryFilter
-                }
-                onChange={(e) =>
-                  setCategoryFilter(
-                    e.target
-                      .value
-                  )
-                }
-                className={
-                  inputClass
-                }
-              >
-                <option value="All">
-                  All Categories
-                </option>
-
-                {categories.map(
-                  (category) => (
-                    <option
-                      key={
-                        category
-                      }
-                      value={
-                        category
-                      }
-                    >
-                      {
-                        category
-                      }
-                    </option>
-                  )
+                    );
+                  }
                 )}
-              </select>
+            </select>
 
-              {/* CLEAR */}
+            <select
+              value={
+                statusFilter
+              }
+              onChange={(
+                event
+              ) =>
+                setStatusFilter(
+                  event.target
+                    .value
+                )
+              }
+              className={`${inputClass} xl:min-w-[145px] xl:flex-1`}
+            >
+              <option value="All">
+                All Status
+              </option>
 
-              <button
-                type="button"
-                onClick={
-                  clearFilters
-                }
-                disabled={
-                  !filtersActive
-                }
-                className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Clear
-              </button>
+              <option value="Open">
+                Open
+              </option>
 
-              {/* ADD WORK */}
+              <option value="Idea">
+                Idea
+              </option>
 
-              <button
-                type="button"
-                onClick={
-                  startAddWork
-                }
-                className="whitespace-nowrap rounded-lg bg-[#1d2228] px-5 py-2.5 text-sm font-medium text-white hover:bg-black"
-              >
-                + Add Work
-              </button>
-            </div>
+              <option value="Planned">
+                Planned
+              </option>
+
+              <option value="Parts Required">
+                Parts Required
+              </option>
+
+              <option value="Parts Ordered">
+                Parts Ordered
+              </option>
+
+              <option value="Ready">
+                Ready
+              </option>
+
+              <option value="In Progress">
+                In Progress
+              </option>
+
+              <option value="On Hold">
+                On Hold
+              </option>
+
+              <option value="Completed">
+                Completed
+              </option>
+
+              <option value="Cancelled">
+                Cancelled
+              </option>
+            </select>
+
+            <select
+              value={
+                priorityFilter
+              }
+              onChange={(
+                event
+              ) =>
+                setPriorityFilter(
+                  event.target
+                    .value
+                )
+              }
+              className={`${inputClass} xl:min-w-[140px] xl:flex-1`}
+            >
+              <option value="All">
+                All Priority
+              </option>
+
+              <option value="1">
+                P1 — Urgent
+              </option>
+
+              <option value="2">
+                P2 — High
+              </option>
+
+              <option value="3">
+                P3 — Normal
+              </option>
+
+              <option value="4">
+                P4 — Low
+              </option>
+            </select>
+
+            <select
+              value={
+                categoryFilter
+              }
+              onChange={(
+                event
+              ) =>
+                setCategoryFilter(
+                  event.target
+                    .value
+                )
+              }
+              className={`${inputClass} xl:min-w-[150px] xl:flex-1`}
+            >
+              <option value="All">
+                All Categories
+              </option>
+
+              {categories.map(
+                (
+                  category
+                ) => (
+                  <option
+                    key={
+                      category
+                    }
+                    value={
+                      category
+                    }
+                  >
+                    {
+                      category
+                    }
+                  </option>
+                )
+              )}
+            </select>
+
+            <button
+              type="button"
+              onClick={
+                clearFilters
+              }
+              disabled={
+                !filtersActive
+              }
+              className="h-[42px] shrink-0 whitespace-nowrap rounded-lg border border-[#d8dce1] bg-white px-4 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Clear
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                startAddWork
+              }
+              className="h-[42px] shrink-0 whitespace-nowrap rounded-lg bg-[#1d2228] px-5 text-sm font-medium text-white hover:bg-black"
+            >
+              + Add Work
+            </button>
           </div>
 
-          {/* =================================================
-              TABLE
-              ================================================= */}
+          <div className="mt-3 text-xs text-gray-400">
+            Showing{" "}
+            <span className="font-medium text-gray-600">
+              {
+                filteredItems.length
+              }
+            </span>{" "}
+            of{" "}
+            <span className="font-medium text-gray-600">
+              {
+                validWorkItems.length
+              }
+            </span>{" "}
+            work items
+          </div>
+        </div>
 
-          <div className="overflow-hidden rounded-xl border border-[#dfe2e6] bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1150px] border-collapse text-left">
-                <thead className="border-b border-[#e1e4e8] bg-[#fafafa]">
-                  <tr>
-                    <TableHeader>
-                      Priority
-                    </TableHeader>
+        {/* TABLE */}
 
-                    <TableHeader>
-                      Vehicle
-                    </TableHeader>
+        <div className="overflow-hidden rounded-xl border border-[#dfe2e6] bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1200px] border-collapse text-left">
+              <thead className="border-b border-[#e1e4e8] bg-[#fafafa]">
+                <tr>
+                  <TableHeader>
+                    Priority
+                  </TableHeader>
 
-                    <TableHeader>
-                      Work Item
-                    </TableHeader>
+                  <TableHeader>
+                    Vehicle
+                  </TableHeader>
 
-                    <TableHeader>
-                      Category
-                    </TableHeader>
+                  <TableHeader>
+                    Customer
+                  </TableHeader>
 
-                    <TableHeader>
-                      Status
-                    </TableHeader>
+                  <TableHeader>
+                    Work Item
+                  </TableHeader>
 
-                    <TableHeader>
-                      Target
-                    </TableHeader>
+                  <TableHeader>
+                    Category
+                  </TableHeader>
 
-                    <TableHeader>
-                      Odometer
-                    </TableHeader>
+                  <TableHeader>
+                    Status
+                  </TableHeader>
 
-                    <TableHeader align="right">
-                      Est. Cost
-                    </TableHeader>
+                  <TableHeader>
+                    Target
+                  </TableHeader>
 
-                    <TableHeader align="right">
-                      Actions
-                    </TableHeader>
-                  </tr>
-                </thead>
+                  <TableHeader>
+                    Odometer
+                  </TableHeader>
 
-                <tbody className="divide-y divide-[#e7e8ea]">
-                  {filteredItems.length >
-                  0 ? (
-                    filteredItems.map(
-                      (item) => {
-                        const vehicle =
-                          vehicleMap.get(
-                            String(
-                              item.vehicleId
+                  <TableHeader align="right">
+                    Est. Cost
+                  </TableHeader>
+
+                  <TableHeader align="right">
+                    Actions
+                  </TableHeader>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-[#e7e8ea]">
+                {filteredItems.length >
+                0 ? (
+                  filteredItems.map(
+                    (
+                      item
+                    ) => {
+                      const vehicle =
+                        vehicleMap.get(
+                          String(
+                            item.vehicleId
+                          )
+                        );
+
+                      const customerName =
+                        vehicle
+                          ? getCustomerName(
+                              vehicle
                             )
-                          );
+                          : "";
 
-                        return (
-                          <tr
-                            key={
-                              item.id
-                            }
-                            className="transition hover:bg-[#fafafa]"
-                          >
-                            {/* PRIORITY */}
+                      const customerCategory =
+                        vehicle
+                          ? getCustomerCategory(
+                              vehicle
+                            )
+                          : "";
 
-                            <td className="px-5 py-4 align-top">
-                              <PriorityBadge
-                                priority={
-                                  item.priority ??
-                                  3
-                                }
-                              />
-                            </td>
+                      return (
+                        <tr
+                          key={
+                            item.id
+                          }
+                          className="transition hover:bg-[#fafafa]"
+                        >
+                          <td className="px-5 py-4 align-top">
+                            <PriorityBadge
+                              priority={
+                                item.priority ??
+                                3
+                              }
+                            />
+                          </td>
 
-                            {/* VEHICLE */}
+                          <td className="px-5 py-4 align-top">
+                            {vehicle ? (
+                              <>
+                                <Link
+                                  href={`/vehicles/${vehicle.id}`}
+                                  className="font-medium hover:underline"
+                                >
+                                  {
+                                    vehicle.name
+                                  }
+                                </Link>
 
-                            <td className="px-5 py-4 align-top">
-                              {vehicle ? (
-                                <>
-                                  <Link
-                                    href={`/vehicles/${vehicle.id}`}
-                                    className="font-medium hover:underline"
-                                  >
-                                    {
-                                      vehicle.name
-                                    }
-                                  </Link>
+                                <div className="mt-1 text-xs text-gray-400">
+                                  {
+                                    vehicle.year
+                                  }{" "}
+                                  ·{" "}
+                                  {
+                                    vehicle.make
+                                  }
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-gray-400">
+                                Unknown
+                              </span>
+                            )}
+                          </td>
 
+                          <td className="px-5 py-4 align-top">
+                            {customerName ? (
+                              <>
+                                <div className="text-sm font-medium">
+                                  {
+                                    customerName
+                                  }
+                                </div>
+
+                                {customerCategory && (
                                   <div className="mt-1 text-xs text-gray-400">
-                                    {
-                                      vehicle.year
-                                    }{" "}
-                                    ·{" "}
-                                    {
-                                      vehicle.make
-                                    }
+                                    {formatCustomerCategory(
+                                      customerCategory
+                                    )}
                                   </div>
-                                </>
-                              ) : (
-                                <span className="text-gray-400">
-                                  Unknown
-                                </span>
-                              )}
-                            </td>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-sm text-gray-400">
+                                —
+                              </span>
+                            )}
+                          </td>
 
-                            {/* WORK ITEM */}
+                          <td className="max-w-[360px] px-5 py-4 align-top">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openEdit(
+                                  item
+                                )
+                              }
+                              className="text-left font-medium hover:underline"
+                            >
+                              {
+                                item.title
+                              }
+                            </button>
 
-                            <td className="max-w-[360px] px-5 py-4 align-top">
+                            {item.workDescription && (
+                              <div className="mt-1 line-clamp-2 text-xs leading-5 text-gray-500">
+                                {
+                                  item.workDescription
+                                }
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-5 py-4 align-top text-sm text-gray-600">
+                            {item.category ||
+                              "General"}
+                          </td>
+
+                          <td className="px-5 py-4 align-top">
+                            <StatusBadge
+                              status={
+                                item.status ||
+                                "Planned"
+                              }
+                            />
+                          </td>
+
+                          <td className="px-5 py-4 align-top text-sm">
+                            {item.targetDate
+                              ? formatDate(
+                                  item.targetDate
+                                )
+                              : "—"}
+                          </td>
+
+                          <td className="px-5 py-4 align-top text-sm">
+                            {item.odometer !==
+                              undefined &&
+                            item.odometer !==
+                              null
+                              ? `${item.odometer.toLocaleString()} ${
+                                  vehicle?.odometerUnit ||
+                                  "km"
+                                }`
+                              : "—"}
+                          </td>
+
+                          <td className="px-5 py-4 text-right align-top text-sm">
+                            {item.estimatedCost !==
+                              undefined &&
+                            item.estimatedCost !==
+                              null
+                              ? `${vehicle?.currency || ""} ${item.estimatedCost.toLocaleString()}`.trim()
+                              : "—"}
+                          </td>
+
+                          <td className="px-5 py-4 text-right align-top">
+                            <div className="flex justify-end gap-2">
                               <button
                                 type="button"
                                 onClick={() =>
@@ -854,132 +1175,45 @@ export default function WorkDashboard({
                                     item
                                   )
                                 }
-                                className="text-left font-medium hover:underline"
+                                className="rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-xs font-medium hover:bg-gray-50"
                               >
-                                {
-                                  item.title
-                                }
+                                Edit
                               </button>
 
-                              {item.workDescription && (
-                                <div className="mt-1 line-clamp-2 text-xs leading-5 text-gray-500">
-                                  {
-                                    item.workDescription
-                                  }
-                                </div>
-                              )}
-                            </td>
-
-                            {/* CATEGORY */}
-
-                            <td className="px-5 py-4 align-top text-sm text-gray-600">
-                              {item.category ||
-                                "General"}
-                            </td>
-
-                            {/* STATUS */}
-
-                            <td className="px-5 py-4 align-top">
-                              <StatusBadge
-                                status={
-                                  item.status ||
-                                  "Planned"
-                                }
-                              />
-                            </td>
-
-                            {/* TARGET */}
-
-                            <td className="px-5 py-4 align-top text-sm">
-                              {item.targetDate
-                                ? formatDate(
-                                    item.targetDate
-                                  )
-                                : "—"}
-                            </td>
-
-                            {/* ODOMETER */}
-
-                            <td className="px-5 py-4 align-top text-sm">
-                              {item.odometer !==
-                                undefined &&
-                              item.odometer !==
-                                null
-                                ? `${item.odometer.toLocaleString()} ${
-                                    vehicle?.odometerUnit ||
-                                    "km"
-                                  }`
-                                : "—"}
-                            </td>
-
-                            {/* COST */}
-
-                            <td className="px-5 py-4 text-right align-top text-sm">
-                              {item.estimatedCost !==
-                                undefined &&
-                              item.estimatedCost !==
-                                null
-                                ? `${vehicle?.currency || ""} ${item.estimatedCost.toLocaleString()}`.trim()
-                                : "—"}
-                            </td>
-
-                            {/* ACTIONS */}
-
-                            <td className="px-5 py-4 text-right align-top">
-                              <div className="flex justify-end gap-2">
+                              {vehicle && (
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    openEdit(
-                                      item
-                                    )
+                                    setWorkModal({
+                                      vehicle,
+                                    })
                                   }
                                   className="rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-xs font-medium hover:bg-gray-50"
                                 >
-                                  Edit
+                                  + Work
                                 </button>
-
-                                {vehicle && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setWorkModal(
-                                        {
-                                          vehicle,
-                                        }
-                                      )
-                                    }
-                                    className="rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-xs font-medium hover:bg-gray-50"
-                                  >
-                                    + Work
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      }
-                    )
-                  ) : (
-                    <tr>
-                      <td
-                        colSpan={9}
-                        className="px-5 py-16 text-center text-sm text-gray-500"
-                      >
-                        No work items match the selected filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="px-5 py-16 text-center text-sm text-gray-500"
+                    >
+                      No work items match the selected filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        </section>
+        </div>
       </div>
-
-      {/* =====================================================
-          WORK MODAL
-          ===================================================== */}
 
       {workModal && (
         <VehicleWorkModal
@@ -1009,39 +1243,51 @@ export default function WorkDashboard({
 }
 
 /* =========================================================
-   COMMON INPUT
+   COMMON
    ========================================================= */
 
 const inputClass =
-  "w-full rounded-lg border border-[#d8dce1] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]";
-
-/* =========================================================
-   COMPACT STAT
-   ========================================================= */
+  "h-[42px] w-full min-w-0 rounded-lg border border-[#d8dce1] bg-white px-3 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]";
 
 function CompactStat({
   label,
   value,
+  active = false,
+  onClick,
 }: {
   label: string;
   value: number;
+  active?: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-lg border border-[#dfe2e6] bg-[#fafafa] px-3 py-1.5">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+    <button
+      type="button"
+      onClick={
+        onClick
+      }
+      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 transition ${
+        active
+          ? "border-[#1d2228] bg-[#1d2228] text-white"
+          : "border-[#dfe2e6] bg-[#fafafa] text-[#1d2228] hover:border-[#aeb4bb] hover:bg-white"
+      }`}
+    >
+      <span
+        className={`text-[11px] font-medium uppercase tracking-wide ${
+          active
+            ? "text-gray-300"
+            : "text-gray-400"
+        }`}
+      >
         {label}
       </span>
 
-      <span className="text-sm font-semibold text-[#1d2228]">
+      <span className="text-sm font-semibold">
         {value}
       </span>
-    </div>
+    </button>
   );
 }
-
-/* =========================================================
-   TABLE HEADER
-   ========================================================= */
 
 function TableHeader({
   children,
@@ -1068,10 +1314,6 @@ function TableHeader({
   );
 }
 
-/* =========================================================
-   PRIORITY BADGE
-   ========================================================= */
-
 function PriorityBadge({
   priority,
 }: {
@@ -1081,13 +1323,17 @@ function PriorityBadge({
     number,
     string
   > = {
-    1: "bg-red-100 text-red-700",
+    1:
+      "bg-red-100 text-red-700",
 
-    2: "bg-orange-100 text-orange-700",
+    2:
+      "bg-orange-100 text-orange-700",
 
-    3: "bg-gray-100 text-gray-600",
+    3:
+      "bg-gray-100 text-gray-600",
 
-    4: "bg-gray-50 text-gray-400",
+    4:
+      "bg-gray-50 text-gray-400",
   };
 
   return (
@@ -1103,10 +1349,6 @@ function PriorityBadge({
     </span>
   );
 }
-
-/* =========================================================
-   STATUS BADGE
-   ========================================================= */
 
 function StatusBadge({
   status,
@@ -1158,10 +1400,6 @@ function StatusBadge({
     </span>
   );
 }
-
-/* =========================================================
-   DATE
-   ========================================================= */
 
 function formatDate(
   date: string

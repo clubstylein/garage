@@ -1,28 +1,62 @@
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import TopNav from "@/components/top-nav";
-import EditVehicleForm from "@/components/edit-vehicle-form";
 import {
+  notFound,
+} from "next/navigation";
+
+import Link from "next/link";
+
+import TopNav from "@/components/top-nav";
+
+import EditVehicleForm from "@/components/edit-vehicle-form";
+
+import {
+  getCustomers,
+  getSpecTemplates,
   getVehicle,
   getVehicleSpecifications,
-  getSpecTemplates,
 } from "@/lib/directus";
+
+export const dynamic =
+  "force-dynamic";
+
+export const revalidate =
+  0;
 
 export default async function EditVehiclePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params:
+    Promise<{
+      id: string;
+    }>;
 }) {
-  const { id } = await params;
+  const {
+    id,
+  } =
+    await params;
 
-  const [vehicle, specifications, templates] =
+  const [
+    vehicle,
+    specifications,
+    templates,
+    customers,
+  ] =
     await Promise.all([
-      getVehicle(id),
-      getVehicleSpecifications(id),
+      getVehicle(
+        id
+      ),
+
+      getVehicleSpecifications(
+        id
+      ),
+
       getSpecTemplates(),
+
+      getCustomers(),
     ]);
 
-  if (!vehicle) {
+  if (
+    !vehicle
+  ) {
     notFound();
   }
 
@@ -41,20 +75,32 @@ export default async function EditVehiclePage({
             </Link>
 
             <h1 className="text-2xl font-semibold">
-              Edit {vehicle.name}
+              Edit{" "}
+              {
+                vehicle.name
+              }
             </h1>
 
             <p className="mt-1 text-sm text-gray-500">
-              Update vehicle details, image and specifications
+              Update vehicle details, customer, image and specifications
             </p>
           </div>
         </header>
 
         <div className="px-5 py-6 lg:px-8">
           <EditVehicleForm
-            vehicle={vehicle}
-            initialSpecifications={specifications}
-            templates={templates}
+            vehicle={
+              vehicle
+            }
+            initialSpecifications={
+              specifications
+            }
+            templates={
+              templates
+            }
+            customers={
+              customers
+            }
           />
         </div>
       </main>

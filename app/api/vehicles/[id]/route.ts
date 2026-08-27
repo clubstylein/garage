@@ -1,4 +1,6 @@
-import { NextResponse } from "next/server";
+import {
+  NextResponse,
+} from "next/server";
 
 const DIRECTUS_URL =
   process.env.DIRECTUS_URL;
@@ -7,16 +9,73 @@ const DIRECTUS_TOKEN =
   process.env.DIRECTUS_TOKEN;
 
 const headers = {
-  Authorization: `Bearer ${DIRECTUS_TOKEN}`,
-  "Content-Type": "application/json",
+  Authorization:
+    `Bearer ${DIRECTUS_TOKEN}`,
+
+  "Content-Type":
+    "application/json",
 };
 
+/* =========================================================
+   HELPERS
+   ========================================================= */
+
+function optionalString(
+  value:
+    unknown
+) {
+  const text =
+    String(
+      value ??
+        ""
+    ).trim();
+
+  return text ||
+    null;
+}
+
+function optionalNumber(
+  value:
+    unknown
+) {
+  if (
+    value ===
+      undefined ||
+    value ===
+      null ||
+    value ===
+      ""
+  ) {
+    return null;
+  }
+
+  const number =
+    Number(
+      value
+    );
+
+  return Number.isFinite(
+    number
+  )
+    ? number
+    : null;
+}
+
+/* =========================================================
+   UPDATE VEHICLE
+   ========================================================= */
+
 export async function PATCH(
-  request: Request,
+  request:
+    Request,
+
   {
     params,
   }: {
-    params: Promise<{ id: string }>;
+    params:
+      Promise<{
+        id: string;
+      }>;
   }
 ) {
   try {
@@ -29,14 +88,24 @@ export async function PATCH(
           error:
             "Directus is not configured",
         },
-        { status: 500 }
+        {
+          status:
+            500,
+        }
       );
     }
 
-    const { id } = await params;
+    const {
+      id,
+    } =
+      await params;
 
     const body =
       await request.json();
+
+    /* =====================================================
+       REQUIRED FIELDS
+       ===================================================== */
 
     if (
       !body.name ||
@@ -49,90 +118,186 @@ export async function PATCH(
           error:
             "Name, make, model and year are required",
         },
-        { status: 400 }
+        {
+          status:
+            400,
+        }
       );
     }
 
+    /* =====================================================
+       OWNERSHIP / CUSTOMER
+       ===================================================== */
+
+    const ownershipStatus =
+      body.ownership_status ===
+      "Wishlist"
+        ? "Wishlist"
+        : "Owned";
+
     /*
-     * UPDATE VEHICLE
+     * Wishlist vehicles never
+     * belong to a customer.
      */
 
+    const customerId =
+      ownershipStatus ===
+      "Wishlist"
+        ? null
+        : optionalString(
+            body.customer
+          );
+
+    /*
+     * Every non-Wishlist garage
+     * vehicle must have a customer.
+     */
+
+    if (
+      ownershipStatus !==
+        "Wishlist" &&
+      !customerId
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Customer is required for non-Wishlist vehicles",
+        },
+        {
+          status:
+            400,
+        }
+      );
+    }
+
+    /* =====================================================
+       UPDATE VEHICLE
+       ===================================================== */
+
     const payload = {
-      name: body.name,
+      name:
+        String(
+          body.name
+        ).trim(),
 
       asset_type:
-        body.asset_type ||
+        optionalString(
+          body.asset_type
+        ) ??
         "Motorcycle",
 
-      make: body.make,
-      model: body.model,
+      ownership_status:
+        ownershipStatus,
+
+      /*
+       * CUSTOMER RELATION
+       */
+
+      customer:
+        customerId,
+
+      make:
+        String(
+          body.make
+        ).trim(),
+
+      model:
+        String(
+          body.model
+        ).trim(),
 
       variant:
-        body.variant || null,
+        optionalString(
+          body.variant
+        ),
 
       year:
-        Number(body.year),
+        Number(
+          body.year
+        ),
 
       status:
-        body.status ||
+        optionalString(
+          body.status
+        ) ??
         "Running",
 
       registration_number:
-        body.registration_number ||
-        null,
+        optionalString(
+          body.registration_number
+        ),
 
       vin:
-        body.vin || null,
+        optionalString(
+          body.vin
+        ),
 
       engine_number:
-        body.engine_number ||
-        null,
+        optionalString(
+          body.engine_number
+        ),
 
       engine_platform:
-        body.engine_platform ||
-        null,
+        optionalString(
+          body.engine_platform
+        ),
 
       engine_cc:
-        body.engine_cc
-          ? Number(
-              body.engine_cc
-            )
-          : null,
+        optionalNumber(
+          body.engine_cc
+        ),
 
       odometer:
-        body.odometer
-          ? Number(
-              body.odometer
-            )
-          : 0,
+        optionalNumber(
+          body.odometer
+        ) ??
+        0,
 
       odometer_unit:
-        body.odometer_unit ||
-        "km",
+        body.odometer_unit ===
+        "mi"
+          ? "mi"
+          : "km",
 
       purchase_date:
-        body.purchase_date ||
-        null,
+        optionalString(
+          body.purchase_date
+        ),
 
       purchase_price:
-        body.purchase_price
-          ? Number(
-              body.purchase_price
-            )
-          : null,
+        optionalNumber(
+          body.purchase_price
+        ),
 
       currency:
-        body.currency || null,
+        optionalString(
+          body.currency
+        ),
 
       location:
-        body.location || null,
+        optionalString(
+          body.location
+        ),
 
       notes:
-        body.notes || null,
+        optionalString(
+          body.notes
+        ),
+
+      /*
+       * IMPORTANT:
+       *
+       * null removes the current
+       * Directus image relation.
+       */
 
       cover_image:
-        body.cover_image ||
-        null,
+        body.cover_image ===
+          null
+          ? null
+          : optionalString(
+              body.cover_image
+            ),
     };
 
     const vehicleResponse =
@@ -141,16 +306,38 @@ export async function PATCH(
           id
         )}`,
         {
-          method: "PATCH",
+          method:
+            "PATCH",
+
           headers,
-          body: JSON.stringify(
-            payload
-          ),
+
+          body:
+            JSON.stringify(
+              payload
+            ),
+
+          cache:
+            "no-store",
         }
       );
 
-    const vehicleResult =
-      await vehicleResponse.json();
+    let vehicleResult;
+
+    try {
+      vehicleResult =
+        await vehicleResponse.json();
+    } catch {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid response from Directus while updating vehicle",
+        },
+        {
+          status:
+            500,
+        }
+      );
+    }
 
     if (
       !vehicleResponse.ok
@@ -175,9 +362,9 @@ export async function PATCH(
       );
     }
 
-    /*
-     * GET EXISTING SPECS
-     */
+    /* =====================================================
+       GET EXISTING SPECIFICATIONS
+       ===================================================== */
 
     const existingResponse =
       await fetch(
@@ -190,19 +377,32 @@ export async function PATCH(
               `Bearer ${DIRECTUS_TOKEN}`,
           },
 
-          cache: "no-store",
+          cache:
+            "no-store",
         }
       );
 
     if (
       !existingResponse.ok
     ) {
+      const error =
+        await existingResponse.text();
+
+      console.error(
+        "Unable to read existing specifications:",
+        existingResponse.status,
+        error
+      );
+
       return NextResponse.json(
         {
           error:
             "Vehicle was updated, but existing specifications could not be read.",
         },
-        { status: 500 }
+        {
+          status:
+            500,
+        }
       );
     }
 
@@ -211,38 +411,61 @@ export async function PATCH(
 
     const existingIds:
       string[] =
-      existingResult.data.map(
-        (item: {
-          id: string;
-        }) => item.id
+      (
+        existingResult.data ??
+        []
+      ).map(
+        (
+          item: {
+            id:
+              string |
+              number;
+          }
+        ) =>
+          String(
+            item.id
+          )
       );
 
-    /*
-     * DELETE OLD SPECS
-     */
+    /* =====================================================
+       DELETE OLD SPECIFICATIONS
+       ===================================================== */
 
     if (
-      existingIds.length > 0
+      existingIds.length >
+      0
     ) {
       const deleteResponse =
         await fetch(
           `${DIRECTUS_URL}/items/garage_vehicle_specifications`,
           {
-            method: "DELETE",
+            method:
+              "DELETE",
 
             headers,
 
-            body: JSON.stringify(
-              existingIds
-            ),
+            body:
+              JSON.stringify(
+                existingIds
+              ),
+
+            cache:
+              "no-store",
           }
         );
 
       if (
         !deleteResponse.ok
       ) {
-        const deleteError =
-          await deleteResponse.json();
+        let deleteError;
+
+        try {
+          deleteError =
+            await deleteResponse.json();
+        } catch {
+          deleteError =
+            null;
+        }
 
         console.error(
           "Specification delete error:",
@@ -254,14 +477,17 @@ export async function PATCH(
             error:
               "Vehicle was updated, but existing specifications could not be replaced.",
           },
-          { status: 500 }
+          {
+            status:
+              500,
+          }
         );
       }
     }
 
-    /*
-     * CREATE UPDATED SPECS
-     */
+    /* =====================================================
+       CREATE UPDATED SPECIFICATIONS
+       ===================================================== */
 
     const specifications =
       Array.isArray(
@@ -270,12 +496,29 @@ export async function PATCH(
         ? body.specifications
         : [];
 
-    if (
-      specifications.length >
-      0
-    ) {
-      const specificationPayload =
-        specifications.map(
+    const specificationPayload =
+      specifications
+        .filter(
+          (
+            specification: {
+              specification?: string;
+              value?: string;
+            }
+          ) =>
+            String(
+              specification
+                .specification ??
+                ""
+            ).trim() !==
+              "" &&
+            String(
+              specification
+                .value ??
+                ""
+            ).trim() !==
+              ""
+        )
+        .map(
           (
             specification: {
               category?: string;
@@ -285,53 +528,80 @@ export async function PATCH(
               notes?: string;
               sort?: number;
             },
-            index: number
+
+            index:
+              number
           ) => ({
-            vehicle: id,
+            vehicle:
+              id,
 
             category:
-              specification.category ||
-              null,
+              optionalString(
+                specification.category
+              ),
 
             specification:
-              specification.specification,
+              optionalString(
+                specification.specification
+              ),
 
             value:
-              specification.value,
+              optionalString(
+                specification.value
+              ),
 
             unit:
-              specification.unit ||
-              null,
+              optionalString(
+                specification.unit
+              ),
 
             notes:
-              specification.notes ||
-              null,
+              optionalString(
+                specification.notes
+              ),
 
             sort:
               specification.sort ??
-              index + 1,
+              index +
+                1,
           })
         );
 
+    if (
+      specificationPayload.length >
+      0
+    ) {
       const createResponse =
         await fetch(
           `${DIRECTUS_URL}/items/garage_vehicle_specifications`,
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers,
 
-            body: JSON.stringify(
-              specificationPayload
-            ),
+            body:
+              JSON.stringify(
+                specificationPayload
+              ),
+
+            cache:
+              "no-store",
           }
         );
 
       if (
         !createResponse.ok
       ) {
-        const createError =
-          await createResponse.json();
+        let createError;
+
+        try {
+          createError =
+            await createResponse.json();
+        } catch {
+          createError =
+            null;
+        }
 
         console.error(
           "Specification create error:",
@@ -343,15 +613,24 @@ export async function PATCH(
             error:
               "Vehicle was updated, but specifications could not be saved.",
           },
-          { status: 500 }
+          {
+            status:
+              500,
+          }
         );
       }
     }
 
+    /* =====================================================
+       SUCCESS
+       ===================================================== */
+
     return NextResponse.json(
       vehicleResult.data
     );
-  } catch (error) {
+  } catch (
+    error
+  ) {
     console.error(
       "Vehicle update error:",
       error
@@ -360,9 +639,15 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "Unable to update vehicle",
+          error instanceof
+          Error
+            ? error.message
+            : "Unable to update vehicle",
       },
-      { status: 500 }
+      {
+        status:
+          500,
+      }
     );
   }
 }
