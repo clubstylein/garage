@@ -126,6 +126,22 @@ type DirectusVehicle = {
 type DirectusWorkItem = {
   id: string;
 
+  customer?:
+    | string
+    | number
+    | {
+        id:
+          | string
+          | number;
+
+        customer_code?: string;
+
+        name?: string;
+
+        category?: string;
+      }
+    | null;
+
   vehicle?:
     | string
     | number
@@ -135,6 +151,8 @@ type DirectusWorkItem = {
           | number;
       }
     | null;
+
+  vehicle_text?: string;
 
   title: string;
 
@@ -258,6 +276,26 @@ function mapCustomer(
 
     pincode:
       customer.pincode ??
+      "",
+
+    address:
+      customer.address ??
+      "",
+
+    city:
+      customer.city ??
+      "",
+
+    state:
+      customer.state ??
+      "",
+
+    country:
+      customer.country ??
+      "",
+
+    notes:
+      customer.notes ??
       "",
   };
 }
@@ -507,7 +545,7 @@ export async function getAllWorkItems(): Promise<
 > {
   const response =
     await fetch(
-      `${DIRECTUS_URL}/items/garage_work_items?fields=id,vehicle.id,title,category,priority,status,work_description,odometer,target_date,started_date,completed_date,estimated_cost,notes,archived,sort&filter[archived][_neq]=true&sort=priority,target_date,title`,
+      `${DIRECTUS_URL}/items/garage_work_items?fields=id,customer.id,customer.customer_code,customer.name,customer.category,vehicle.id,vehicle_text,title,category,priority,status,work_description,odometer,target_date,started_date,completed_date,estimated_cost,notes,archived,sort&filter[archived][_neq]=true&sort=priority,target_date,title`,
       {
         headers:
           directusHeaders,
@@ -537,69 +575,49 @@ export async function getAllWorkItems(): Promise<
 
   return (
     result.data as DirectusWorkItem[]
-  ).map((item) => {
-    const vehicleId =
-      typeof item.vehicle ===
-        "string" ||
-      typeof item.vehicle ===
-        "number"
-        ? String(
-            item.vehicle
-          )
-        : item.vehicle?.id !==
-          undefined
-          ? String(
-              item.vehicle.id
-            )
-          : "";
-
-    return {
-      id:
-        String(
-          item.id
-        ),
-
-      vehicleId,
-
-      title:
-        item.title,
-
-      category:
-        item.category,
-
-      priority:
-        item.priority,
-
-      status:
-        item.status,
-
-      workDescription:
-        item.work_description,
-
-      odometer:
-        item.odometer,
-
-      targetDate:
-        item.target_date,
-
-      startedDate:
-        item.started_date,
-
-      completedDate:
-        item.completed_date,
-
-      estimatedCost:
-        item.estimated_cost,
-
-      notes:
-        item.notes,
-    };
-  });
+  ).map((item) =>
+    mapWorkItem(
+      item,
+      ""
+    )
+  );
 }
 
 /* =========================================================
    WORK ITEM MAPPING
    ========================================================= */
+
+function relationId(
+  value:
+    | string
+    | number
+    | { id: string | number }
+    | null
+    | undefined
+): string {
+  if (
+    typeof value ===
+      "string" ||
+    typeof value ===
+      "number"
+  ) {
+    return String(value);
+  }
+
+  if (
+    value &&
+    typeof value ===
+      "object" &&
+    value.id !==
+      undefined
+  ) {
+    return String(
+      value.id
+    );
+  }
+
+  return "";
+}
 
 function mapWorkItem(
   item:
@@ -609,19 +627,22 @@ function mapWorkItem(
     string
 ): WorkItem {
   const vehicleId =
-    typeof item.vehicle ===
-      "string" ||
-    typeof item.vehicle ===
-      "number"
-      ? String(
-          item.vehicle
-        )
-      : item.vehicle?.id !==
-        undefined
-        ? String(
-            item.vehicle.id
-          )
-        : fallbackVehicleId;
+    relationId(
+      item.vehicle
+    ) ||
+    fallbackVehicleId;
+
+  const customerId =
+    relationId(
+      item.customer
+    );
+
+  const customer =
+    item.customer &&
+    typeof item.customer ===
+      "object"
+      ? item.customer
+      : null;
 
   return {
     id:
@@ -629,7 +650,26 @@ function mapWorkItem(
         item.id
       ),
 
-    vehicleId,
+    customerId:
+      customerId ||
+      undefined,
+
+    customerCode:
+      customer?.customer_code,
+
+    customerName:
+      customer?.name,
+
+    customerCategory:
+      customer?.category,
+
+    vehicleId:
+      vehicleId ||
+      undefined,
+
+    vehicleText:
+      item.vehicle_text ??
+      undefined,
 
     title:
       item.title,
@@ -876,7 +916,7 @@ export async function getVehicleWorkItems(
 > {
   const response =
     await fetch(
-      `${DIRECTUS_URL}/items/garage_work_items?fields=id,vehicle.id,title,category,priority,status,work_description,odometer,target_date,started_date,completed_date,estimated_cost,notes,archived,sort&filter[vehicle][_eq]=${encodeURIComponent(
+      `${DIRECTUS_URL}/items/garage_work_items?fields=id,customer.id,customer.customer_code,customer.name,customer.category,vehicle.id,vehicle_text,title,category,priority,status,work_description,odometer,target_date,started_date,completed_date,estimated_cost,notes,archived,sort&filter[vehicle][_eq]=${encodeURIComponent(
         vehicleId
       )}&filter[archived][_neq]=true&sort=priority,sort`,
       {
