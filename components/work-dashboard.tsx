@@ -72,9 +72,6 @@ export default function WorkDashboard({
 
   /*
    * NON-WISHLIST VEHICLES
-   *
-   * Wishlist vehicles should not
-   * participate in workshop work.
    */
 
   const workVehicles =
@@ -92,7 +89,6 @@ export default function WorkDashboard({
   /*
    * VEHICLE LOOKUP
    *
-   * IMPORTANT:
    * Always normalize IDs to strings.
    */
 
@@ -123,6 +119,14 @@ export default function WorkDashboard({
       return Array.from(
         new Set(
           workItems
+            .filter(
+              (item) =>
+                vehicleMap.has(
+                  String(
+                    item.vehicleId
+                  )
+                )
+            )
             .map(
               (item) =>
                 item.category
@@ -135,7 +139,31 @@ export default function WorkDashboard({
             )
         )
       ).sort();
-    }, [workItems]);
+    }, [
+      workItems,
+      vehicleMap,
+    ]);
+
+  /*
+   * VALID WORK ITEMS
+   *
+   * Excludes Wishlist vehicles.
+   */
+
+  const validWorkItems =
+    useMemo(() => {
+      return workItems.filter(
+        (item) =>
+          vehicleMap.has(
+            String(
+              item.vehicleId
+            )
+          )
+      );
+    }, [
+      workItems,
+      vehicleMap,
+    ]);
 
   /*
    * FILTERED ITEMS
@@ -148,12 +176,8 @@ export default function WorkDashboard({
           .trim()
           .toLowerCase();
 
-      return workItems.filter(
+      return validWorkItems.filter(
         (item) => {
-          /*
-           * Normalize item vehicle ID
-           * to string before lookup.
-           */
           const itemVehicleId =
             String(
               item.vehicleId
@@ -164,11 +188,6 @@ export default function WorkDashboard({
               itemVehicleId
             );
 
-          /*
-           * If this work item belongs
-           * to a Wishlist vehicle,
-           * hide it from Work page.
-           */
           if (!vehicle) {
             return false;
           }
@@ -177,44 +196,26 @@ export default function WorkDashboard({
             !query ||
             item.title
               ?.toLowerCase()
-              .includes(
-                query
-              ) ||
+              .includes(query) ||
             item.category
               ?.toLowerCase()
-              .includes(
-                query
-              ) ||
+              .includes(query) ||
             item.workDescription
               ?.toLowerCase()
-              .includes(
-                query
-              ) ||
+              .includes(query) ||
             item.notes
               ?.toLowerCase()
-              .includes(
-                query
-              ) ||
+              .includes(query) ||
             vehicle.name
               ?.toLowerCase()
-              .includes(
-                query
-              ) ||
+              .includes(query) ||
             vehicle.make
               ?.toLowerCase()
-              .includes(
-                query
-              ) ||
+              .includes(query) ||
             vehicle.model
               ?.toLowerCase()
-              .includes(
-                query
-              );
+              .includes(query);
 
-          /*
-           * FIX:
-           * compare string to string.
-           */
           const matchesVehicle =
             vehicleFilter ===
               "All" ||
@@ -254,35 +255,13 @@ export default function WorkDashboard({
         }
       );
     }, [
-      workItems,
+      validWorkItems,
       vehicleMap,
       search,
       vehicleFilter,
       statusFilter,
       priorityFilter,
       categoryFilter,
-    ]);
-
-  /*
-   * WORK ITEMS THAT BELONG TO
-   * NON-WISHLIST VEHICLES
-   *
-   * Use these for statistics as well.
-   */
-
-  const validWorkItems =
-    useMemo(() => {
-      return workItems.filter(
-        (item) =>
-          vehicleMap.has(
-            String(
-              item.vehicleId
-            )
-          )
-      );
-    }, [
-      workItems,
-      vehicleMap,
     ]);
 
   /*
@@ -370,13 +349,13 @@ export default function WorkDashboard({
   }
 
   /*
-   * TOP ADD WORK
+   * ADD WORK
    */
 
   function startAddWork() {
     /*
-     * If page is already filtered
-     * to one vehicle, use it.
+     * If page is filtered to one vehicle,
+     * open Add Work already locked to it.
      */
     if (
       vehicleFilter !==
@@ -399,9 +378,8 @@ export default function WorkDashboard({
     }
 
     /*
-     * Otherwise open common
-     * Work popup with vehicle
-     * selector inside it.
+     * Otherwise open shared modal
+     * with vehicle selector.
      */
     setWorkModal({});
   }
@@ -444,73 +422,57 @@ export default function WorkDashboard({
   return (
     <main className="min-h-screen bg-[#f5f6f8] text-[#1d2228]">
       {/* =====================================================
-          COMBINED PAGE HEADER + SUMMARY
+          COMPACT HEADER
           ===================================================== */}
 
       <section className="border-b border-[#e1e4e8] bg-white">
-        <div className="px-5 py-5 lg:px-8">
-          {/* TITLE + ADD WORK */}
+        <div className="px-5 py-4 lg:px-8">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Work
+            </h1>
 
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Work
-              </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <CompactStat
+                label="Total"
+                value={
+                  stats.total
+                }
+              />
 
-              <p className="mt-1 text-sm text-gray-500">
-                Workshop jobs across all vehicles
-              </p>
+              <CompactStat
+                label="Open"
+                value={
+                  stats.open
+                }
+              />
+
+              <CompactStat
+                label="P1"
+                value={
+                  stats.priority1
+                }
+              />
+
+              <CompactStat
+                label="Parts"
+                value={
+                  stats.partsRequired
+                }
+              />
+
+              <CompactStat
+                label="In Progress"
+                value={
+                  stats.inProgress
+                }
+              />
             </div>
-
-            <button
-              type="button"
-              onClick={
-                startAddWork
-              }
-              className="shrink-0 rounded-lg bg-[#1d2228] px-5 py-2.5 text-sm font-medium text-white hover:bg-black"
-            >
-              + Add Work
-            </button>
           </div>
 
-          {/* COMPACT SUMMARY */}
-
-          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-            <SummaryCard
-              label="Total Work"
-              value={
-                stats.total
-              }
-            />
-
-            <SummaryCard
-              label="Open"
-              value={
-                stats.open
-              }
-            />
-
-            <SummaryCard
-              label="Priority 1"
-              value={
-                stats.priority1
-              }
-            />
-
-            <SummaryCard
-              label="Parts Required"
-              value={
-                stats.partsRequired
-              }
-            />
-
-            <SummaryCard
-              label="In Progress"
-              value={
-                stats.inProgress
-              }
-            />
-          </div>
+          <p className="mt-1 text-sm text-gray-500">
+            Workshop jobs across all vehicles
+          </p>
         </div>
       </section>
 
@@ -518,11 +480,11 @@ export default function WorkDashboard({
           CONTENT
           ===================================================== */}
 
-      <div className="px-5 py-6 lg:px-8">
-        {/* WORK ITEMS */}
-
+      <div className="px-5 py-5 lg:px-8">
         <section>
-          <div className="mb-4">
+          {/* WORK ITEMS TITLE */}
+
+          <div className="mb-3">
             <h2 className="text-xl font-semibold">
               Work Items
             </h2>
@@ -539,10 +501,12 @@ export default function WorkDashboard({
             </p>
           </div>
 
-          {/* FILTERS */}
+          {/* =================================================
+              FILTERS + ADD WORK
+              ================================================= */}
 
           <div className="mb-5 rounded-xl border border-[#dfe2e6] bg-white p-4">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1.4fr_1fr_1fr_1.2fr_auto]">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1.4fr_1fr_1fr_1.2fr_auto_auto]">
               {/* SEARCH */}
 
               <input
@@ -757,10 +721,24 @@ export default function WorkDashboard({
               >
                 Clear
               </button>
+
+              {/* ADD WORK */}
+
+              <button
+                type="button"
+                onClick={
+                  startAddWork
+                }
+                className="whitespace-nowrap rounded-lg bg-[#1d2228] px-5 py-2.5 text-sm font-medium text-white hover:bg-black"
+              >
+                + Add Work
+              </button>
             </div>
           </div>
 
-          {/* TABLE */}
+          {/* =================================================
+              TABLE
+              ================================================= */}
 
           <div className="overflow-hidden rounded-xl border border-[#dfe2e6] bg-white">
             <div className="overflow-x-auto">
@@ -866,7 +844,7 @@ export default function WorkDashboard({
                               )}
                             </td>
 
-                            {/* WORK TITLE */}
+                            {/* WORK ITEM */}
 
                             <td className="max-w-[360px] px-5 py-4 align-top">
                               <button
@@ -985,9 +963,7 @@ export default function WorkDashboard({
                   ) : (
                     <tr>
                       <td
-                        colSpan={
-                          9
-                        }
+                        colSpan={9}
                         className="px-5 py-16 text-center text-sm text-gray-500"
                       >
                         No work items match the selected filters.
@@ -1001,7 +977,9 @@ export default function WorkDashboard({
         </section>
       </div>
 
-      {/* COMMON WORK POPUP */}
+      {/* =====================================================
+          WORK MODAL
+          ===================================================== */}
 
       {workModal && (
         <VehicleWorkModal
@@ -1015,10 +993,6 @@ export default function WorkDashboard({
             workModal.workItemId
           }
           onChanged={() => {
-            /*
-             * Refresh Work page
-             * server data after add/edit.
-             */
             router.refresh();
           }}
           onClose={() => {
@@ -1026,9 +1000,6 @@ export default function WorkDashboard({
               null
             );
 
-            /*
-             * Also refresh when closing.
-             */
             router.refresh();
           }}
         />
@@ -1037,20 +1008,18 @@ export default function WorkDashboard({
   );
 }
 
-/*
- * COMMON INPUT
- */
+/* =========================================================
+   COMMON INPUT
+   ========================================================= */
 
 const inputClass =
   "w-full rounded-lg border border-[#d8dce1] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]";
 
-/*
- * SUMMARY CARD
- *
- * More compact than before.
- */
+/* =========================================================
+   COMPACT STAT
+   ========================================================= */
 
-function SummaryCard({
+function CompactStat({
   label,
   value,
 }: {
@@ -1058,21 +1027,21 @@ function SummaryCard({
   value: number;
 }) {
   return (
-    <div className="rounded-xl border border-[#dfe2e6] bg-[#fafafa] px-4 py-3">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+    <div className="inline-flex items-center gap-2 rounded-lg border border-[#dfe2e6] bg-[#fafafa] px-3 py-1.5">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
         {label}
-      </div>
+      </span>
 
-      <div className="mt-1.5 text-xl font-semibold">
+      <span className="text-sm font-semibold text-[#1d2228]">
         {value}
-      </div>
+      </span>
     </div>
   );
 }
 
-/*
- * TABLE HEADER
- */
+/* =========================================================
+   TABLE HEADER
+   ========================================================= */
 
 function TableHeader({
   children,
@@ -1099,9 +1068,9 @@ function TableHeader({
   );
 }
 
-/*
- * PRIORITY
- */
+/* =========================================================
+   PRIORITY BADGE
+   ========================================================= */
 
 function PriorityBadge({
   priority,
@@ -1135,9 +1104,9 @@ function PriorityBadge({
   );
 }
 
-/*
- * STATUS
- */
+/* =========================================================
+   STATUS BADGE
+   ========================================================= */
 
 function StatusBadge({
   status,
@@ -1190,9 +1159,9 @@ function StatusBadge({
   );
 }
 
-/*
- * DATE
- */
+/* =========================================================
+   DATE
+   ========================================================= */
 
 function formatDate(
   date: string
