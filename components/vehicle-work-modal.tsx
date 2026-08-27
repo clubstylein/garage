@@ -482,16 +482,16 @@ export default function VehicleWorkModal({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 p-0 sm:items-center sm:p-3"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-3"
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) onClose();
         }}
       >
-        <div className="flex h-full w-full flex-col overflow-hidden bg-[#f5f6f8] shadow-2xl sm:max-h-[94vh] sm:max-w-6xl sm:rounded-2xl">
+        <div className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-[#f5f6f8] shadow-2xl sm:max-h-[94vh]">
           <div className="flex shrink-0 items-center justify-between border-b border-[#dfe2e6] bg-white px-4 py-3 sm:px-5">
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold sm:text-xl">Work Items</h2>
-              <p className="mt-0.5 truncate text-xs text-gray-500 sm:text-sm">
+              <h2 className="text-lg font-semibold">Work Items</h2>
+              <p className="mt-0.5 truncate text-xs text-gray-500">
                 {selectedCustomer
                   ? `${selectedCustomer.name} · ${
                       vehicleMode === "existing"
@@ -505,20 +505,20 @@ export default function VehicleWorkModal({
             <button
               type="button"
               onClick={onClose}
-              className="ml-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#d8dce1] bg-white text-xl text-gray-500 hover:bg-gray-50 sm:h-9 sm:w-9"
+              className="ml-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#d8dce1] bg-white text-lg text-gray-500 hover:bg-gray-50 hover:text-black"
               aria-label="Close"
             >
               ×
             </button>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[280px_1fr]">
-            <aside className="order-2 max-h-[34vh] overflow-y-auto border-t border-[#dfe2e6] bg-white p-3 lg:order-1 lg:max-h-none lg:border-r lg:border-t-0">
+          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[285px_1fr]">
+            <aside className="order-2 max-h-[30vh] overflow-y-auto border-t border-[#dfe2e6] bg-white p-3 lg:order-1 lg:max-h-none lg:border-r lg:border-t-0">
               <button
                 type="button"
                 onClick={newWorkItem}
                 disabled={!selectedCustomerId}
-                className="mb-3 h-11 w-full rounded-lg bg-[#1d2228] px-3 text-sm font-medium text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
+                className="mb-3 w-full rounded-lg bg-[#1d2228] px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
               >
                 + Add Work
               </button>
@@ -578,15 +578,17 @@ export default function VehicleWorkModal({
               )}
             </aside>
 
-            <div className="order-1 min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:order-2">
-              <form onSubmit={handleSave} className="mx-auto max-w-5xl">
+            <div className="order-1 min-h-0 overflow-y-auto p-3 sm:p-4 lg:order-2">
+              <form onSubmit={handleSave}>
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-base font-semibold">
                       {mode === "edit" ? "Edit Work" : "Add Work"}
                     </h3>
                     <p className="mt-0.5 text-xs text-gray-500">
-                      {mode === "edit" ? "Update work item." : "Create a new work item."}
+                      {mode === "edit"
+                        ? "Update work item."
+                        : "Create a new work item."}
                     </p>
                   </div>
 
@@ -594,297 +596,325 @@ export default function VehicleWorkModal({
                     <button
                       type="button"
                       onClick={newWorkItem}
-                      className="h-10 shrink-0 rounded-lg border border-[#d8dce1] bg-white px-3 text-xs font-medium hover:bg-gray-50"
+                      className="shrink-0 rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-xs font-medium hover:bg-gray-50"
                     >
                       + New
                     </button>
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  <Field label="Customer" required>
-                    <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                      <div ref={customerBoxRef} className="relative">
-                        <input
-                          type="search"
-                          value={customerQuery}
-                          onFocus={() => setCustomerSearchOpen(true)}
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            setCustomerQuery(value);
-                            setCustomerSearchOpen(true);
-
-                            if (
-                              selectedCustomer &&
-                              value.trim() !== selectedCustomer.name.trim()
-                            ) {
-                              setSelectedCustomerId("");
-                              setSelectedVehicleId("");
-                              setVehicleText("");
-                              setVehicleMode("existing");
-                            }
-                          }}
-                          placeholder={
-                            loadingCustomers
-                              ? "Loading customers..."
-                              : "Search name, phone, email or code..."
-                          }
-                          className={inputClass}
-                        />
-
-                        {customerSearchOpen && customerQuery.trim() && (
-                          <div className="absolute left-0 right-0 top-[46px] z-30 max-h-72 overflow-y-auto rounded-xl border border-[#d8dce1] bg-white p-1 shadow-xl">
-                            {quickCustomerResults.length > 0 ? (
-                              quickCustomerResults.map((customer) => (
-                                <button
-                                  key={customer.id}
-                                  type="button"
-                                  onClick={() => selectCustomer(customer)}
-                                  className="flex w-full items-start justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50"
-                                >
-                                  <div className="min-w-0">
-                                    <div className="truncate text-sm font-medium">
-                                      {customer.name}
-                                    </div>
-                                    <div className="mt-0.5 truncate text-xs text-gray-500">
-                                      {[customer.customerCode, customer.phone, customer.city]
-                                        .filter(Boolean)
-                                        .join(" · ")}
-                                    </div>
-                                  </div>
-                                  <span className="shrink-0 text-[11px] text-gray-400">
-                                    {formatCategory(customer.category)}
-                                  </span>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="px-3 py-4 text-center text-xs text-gray-500">
-                                No matching customers. Use detailed search or Add.
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowCustomerSearch(true)}
-                        className="h-11 rounded-lg border border-[#d8dce1] bg-white px-4 text-sm font-medium hover:bg-gray-50"
-                        title="Detailed customer search"
-                      >
-                        ⌕ <span className="sm:hidden">Search</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCustomer(true)}
-                        className="h-11 rounded-lg border border-[#d8dce1] bg-white px-4 text-sm font-medium hover:bg-gray-50"
-                      >
-                        + Add
-                      </button>
-                    </div>
-
-                    {selectedCustomer && (
-                      <div className="mt-1.5 text-xs text-gray-500">
-                        {selectedCustomer.customerCode || "—"} · {formatCategory(selectedCustomer.category)}
-                        {selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ""}
-                      </div>
-                    )}
-                  </Field>
-
-                  <Field label="Vehicle" required>
-                    <div className="grid gap-2 sm:grid-cols-[150px_1fr]">
-                      <select
-                        value={vehicleMode}
-                        onChange={(event) =>
-                          handleVehicleModeChange(event.target.value as VehicleMode)
-                        }
-                        disabled={!selectedCustomerId}
-                        className={inputClass}
-                      >
-                        <option value="existing">Existing Vehicle</option>
-                        <option value="free-text">Free Text</option>
-                      </select>
-
-                      {vehicleMode === "existing" ? (
-                        <select
-                          value={selectedVehicleId}
-                          onChange={(event) => handleVehicleChange(event.target.value)}
-                          disabled={!selectedCustomerId}
-                          className={inputClass}
+                <div className="grid gap-3 xl:grid-cols-4">
+                  <div className="xl:col-span-4">
+                    <Field label="Customer" required>
+                      <div className="flex flex-wrap gap-2">
+                        <div
+                          ref={customerBoxRef}
+                          className="relative min-w-[220px] flex-1"
                         >
-                          <option value="">
-                            {!selectedCustomerId
-                              ? "Select customer first..."
-                              : customerVehicles.length === 0
-                              ? "No saved vehicles for this customer"
-                              : "Select vehicle..."}
-                          </option>
+                          <input
+                            type="search"
+                            value={customerQuery}
+                            onFocus={() => setCustomerSearchOpen(true)}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setCustomerQuery(value);
+                              setCustomerSearchOpen(true);
 
-                          {customerVehicles.map((item) => (
-                            <option key={item.id} value={String(item.id)}>
-                              {item.name} — {item.year} {item.make} {item.model}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          value={vehicleText}
-                          onChange={(event) => setVehicleText(event.target.value)}
-                          disabled={!selectedCustomerId}
-                          placeholder="e.g. 2020 Royal Enfield Himalayan 411 · TN43..."
-                          className={inputClass}
-                        />
+                              if (
+                                selectedCustomer &&
+                                value.trim() !== selectedCustomer.name.trim()
+                              ) {
+                                setSelectedCustomerId("");
+                                setSelectedVehicleId("");
+                                setVehicleText("");
+                                setItems([]);
+                                setMode("create");
+                                setForm({ ...emptyForm });
+                              }
+                            }}
+                            placeholder={
+                              loadingCustomers
+                                ? "Loading customers..."
+                                : "Search name, phone, email or code..."
+                            }
+                            className={inputClass}
+                          />
+
+                          {customerSearchOpen && customerQuery.trim() && (
+                            <div className="absolute left-0 right-0 top-[42px] z-30 max-h-72 overflow-y-auto rounded-xl border border-[#d8dce1] bg-white p-1 shadow-xl sm:top-[40px]">
+                              {quickCustomerResults.length > 0 ? (
+                                quickCustomerResults.map((customer) => (
+                                  <button
+                                    key={customer.id}
+                                    type="button"
+                                    onClick={() => selectCustomer(customer)}
+                                    className="flex w-full items-start justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50"
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="truncate text-sm font-medium">
+                                        {customer.name}
+                                      </div>
+                                      <div className="mt-0.5 truncate text-xs text-gray-500">
+                                        {[
+                                          customer.customerCode,
+                                          customer.phone,
+                                          customer.city,
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" · ")}
+                                      </div>
+                                    </div>
+                                    <span className="shrink-0 text-[11px] text-gray-400">
+                                      {formatCategory(customer.category)}
+                                    </span>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="px-3 py-4 text-center text-xs text-gray-500">
+                                  No matching customers. Use detailed search or Add.
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowCustomerSearch(true)}
+                          className="h-11 shrink-0 rounded-lg border border-[#d8dce1] bg-white px-4 text-sm font-medium hover:bg-gray-50 sm:h-[38px]"
+                          title="Detailed customer search"
+                        >
+                          ⌕ Search
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCustomer(true)}
+                          className="h-11 shrink-0 rounded-lg border border-[#d8dce1] bg-white px-4 text-sm font-medium hover:bg-gray-50 sm:h-[38px]"
+                        >
+                          + Add
+                        </button>
+                      </div>
+
+                      {selectedCustomer && (
+                        <div className="mt-1.5 text-xs text-gray-500">
+                          {selectedCustomer.customerCode || "—"} ·{" "}
+                          {formatCategory(selectedCustomer.category)}
+                          {selectedCustomer.phone
+                            ? ` · ${selectedCustomer.phone}`
+                            : ""}
+                        </div>
                       )}
-                    </div>
-                  </Field>
-
-                  <Field label="Work Title" required>
-                    <input
-                      value={form.title}
-                      onChange={(event) => updateField("title", event.target.value)}
-                      disabled={formDisabled}
-                      placeholder="Replace rear cylinder and piston"
-                      className={inputClass}
-                    />
-                  </Field>
-
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <Field label="Category">
-                      <input
-                        value={form.category}
-                        onChange={(event) =>
-                          updateField("category", event.target.value)
-                        }
-                        disabled={formDisabled}
-                        list="work-category-options"
-                        placeholder="Engine"
-                        className={inputClass}
-                      />
-                      <datalist id="work-category-options">
-                        <option value="Engine" />
-                        <option value="Electrical" />
-                        <option value="Brakes" />
-                        <option value="Suspension" />
-                        <option value="Drivetrain" />
-                        <option value="Controls" />
-                        <option value="Wheels & Tyres" />
-                        <option value="Body" />
-                        <option value="Service" />
-                        <option value="Fabrication" />
-                        <option value="Accessories" />
-                        <option value="Other" />
-                      </datalist>
                     </Field>
+                  </div>
 
-                    <Field label="Status">
-                      <select
-                        value={form.status}
-                        disabled={formDisabled}
-                        onChange={(event) => updateField("status", event.target.value)}
-                        className={inputClass}
-                      >
-                        <option value="Idea">Idea</option>
-                        <option value="Planned">Planned</option>
-                        <option value="Parts Required">Parts Required</option>
-                        <option value="Parts Ordered">Parts Ordered</option>
-                        <option value="Ready">Ready</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="On Hold">On Hold</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
-                    </Field>
-
-                    <Field label="Priority">
-                      <select
-                        value={form.priority}
-                        disabled={formDisabled}
-                        onChange={(event) =>
-                          updateField("priority", event.target.value)
-                        }
-                        className={inputClass}
-                      >
-                        <option value="1">1 — Urgent</option>
-                        <option value="2">2 — High</option>
-                        <option value="3">3 — Normal</option>
-                        <option value="4">4 — Low</option>
-                      </select>
-                    </Field>
-
-                    <Field label="Odometer">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          value={form.odometer}
-                          disabled={formDisabled}
+                  <div className="xl:col-span-4">
+                    <Field label="Vehicle" required>
+                      <div className="flex flex-wrap gap-2">
+                        <select
+                          value={vehicleMode}
                           onChange={(event) =>
-                            updateField("odometer", event.target.value)
+                            handleVehicleModeChange(
+                              event.target.value as VehicleMode
+                            )
                           }
-                          className={inputClass}
-                        />
-                        {vehicleMode === "existing" && (
-                          <span className="shrink-0 text-xs text-gray-500">
-                            {selectedVehicle?.odometerUnit || "km"}
-                          </span>
-                        )}
+                          disabled={!selectedCustomerId}
+                          className={`${selectClass} w-full shrink-0 sm:w-[170px]`}
+                        >
+                          <option value="existing">Existing Vehicle</option>
+                          <option value="free-text">Free Text</option>
+                        </select>
+
+                        <div className="min-w-[220px] flex-1">
+                          {vehicleMode === "existing" ? (
+                            <select
+                              value={selectedVehicleId}
+                              onChange={(event) =>
+                                handleVehicleChange(event.target.value)
+                              }
+                              disabled={!selectedCustomerId}
+                              className={selectClass}
+                            >
+                              <option value="">
+                                {!selectedCustomerId
+                                  ? "Select customer first..."
+                                  : customerVehicles.length === 0
+                                    ? "No saved vehicles for this customer"
+                                    : "Select vehicle..."}
+                              </option>
+
+                              {customerVehicles.map((item) => (
+                                <option key={item.id} value={String(item.id)}>
+                                  {item.name} — {item.year} {item.make} {item.model}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              value={vehicleText}
+                              onChange={(event) =>
+                                setVehicleText(event.target.value)
+                              }
+                              disabled={!selectedCustomerId}
+                              placeholder="e.g. 2020 Royal Enfield Himalayan 411 · TN43..."
+                              className={inputClass}
+                            />
+                          )}
+                        </div>
                       </div>
                     </Field>
+                  </div>
 
-                    <Field label="Target Date">
+                  <div className="xl:col-span-4">
+                    <Field label="Work Title" required>
                       <input
-                        type="date"
-                        value={form.target_date}
-                        disabled={formDisabled}
+                        value={form.title}
                         onChange={(event) =>
-                          updateField("target_date", event.target.value)
+                          updateField("title", event.target.value)
                         }
-                        className={inputClass}
-                      />
-                    </Field>
-
-                    <Field label="Started Date">
-                      <input
-                        type="date"
-                        value={form.started_date}
                         disabled={formDisabled}
-                        onChange={(event) =>
-                          updateField("started_date", event.target.value)
-                        }
-                        className={inputClass}
-                      />
-                    </Field>
-
-                    <Field label="Completed Date">
-                      <input
-                        type="date"
-                        value={form.completed_date}
-                        disabled={formDisabled}
-                        onChange={(event) =>
-                          updateField("completed_date", event.target.value)
-                        }
-                        className={inputClass}
-                      />
-                    </Field>
-
-                    <Field label="Estimated Cost">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={form.estimated_cost}
-                        disabled={formDisabled}
-                        onChange={(event) =>
-                          updateField("estimated_cost", event.target.value)
-                        }
-                        placeholder="0"
+                        placeholder="Replace rear cylinder and piston"
                         className={inputClass}
                       />
                     </Field>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Category">
+                    <input
+                      value={form.category}
+                      onChange={(event) =>
+                        updateField("category", event.target.value)
+                      }
+                      disabled={formDisabled}
+                      list="work-category-options"
+                      placeholder="Engine"
+                      className={inputClass}
+                    />
+                    <datalist id="work-category-options">
+                      <option value="Engine" />
+                      <option value="Electrical" />
+                      <option value="Brakes" />
+                      <option value="Suspension" />
+                      <option value="Drivetrain" />
+                      <option value="Controls" />
+                      <option value="Wheels & Tyres" />
+                      <option value="Body" />
+                      <option value="Service" />
+                      <option value="Fabrication" />
+                      <option value="Accessories" />
+                      <option value="Other" />
+                    </datalist>
+                  </Field>
+
+                  <Field label="Status">
+                    <select
+                      value={form.status}
+                      disabled={formDisabled}
+                      onChange={(event) =>
+                        updateField("status", event.target.value)
+                      }
+                      className={selectClass}
+                    >
+                      <option value="Idea">Idea</option>
+                      <option value="Planned">Planned</option>
+                      <option value="Parts Required">Parts Required</option>
+                      <option value="Parts Ordered">Parts Ordered</option>
+                      <option value="Ready">Ready</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="On Hold">On Hold</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </Field>
+
+                  <Field label="Priority">
+                    <select
+                      value={form.priority}
+                      disabled={formDisabled}
+                      onChange={(event) =>
+                        updateField("priority", event.target.value)
+                      }
+                      className={selectClass}
+                    >
+                      <option value="1">1 — Urgent</option>
+                      <option value="2">2 — High</option>
+                      <option value="3">3 — Normal</option>
+                      <option value="4">4 — Low</option>
+                    </select>
+                  </Field>
+
+                  <Field label="Odometer">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.odometer}
+                        disabled={formDisabled}
+                        onChange={(event) =>
+                          updateField("odometer", event.target.value)
+                        }
+                        className={inputClass}
+                      />
+                      {vehicleMode === "existing" && (
+                        <span className="shrink-0 text-xs text-gray-500">
+                          {selectedVehicle?.odometerUnit || "km"}
+                        </span>
+                      )}
+                    </div>
+                  </Field>
+
+                  <Field label="Target Date">
+                    <input
+                      type="date"
+                      value={form.target_date}
+                      disabled={formDisabled}
+                      onChange={(event) =>
+                        updateField("target_date", event.target.value)
+                      }
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  <Field label="Started Date">
+                    <input
+                      type="date"
+                      value={form.started_date}
+                      disabled={formDisabled}
+                      onChange={(event) =>
+                        updateField("started_date", event.target.value)
+                      }
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  <Field label="Completed Date">
+                    <input
+                      type="date"
+                      value={form.completed_date}
+                      disabled={formDisabled}
+                      onChange={(event) =>
+                        updateField("completed_date", event.target.value)
+                      }
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  <Field label="Estimated Cost">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.estimated_cost}
+                      disabled={formDisabled}
+                      onChange={(event) =>
+                        updateField("estimated_cost", event.target.value)
+                      }
+                      placeholder="0"
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  <div className="xl:col-span-2">
                     <Field label="Work Description">
                       <textarea
                         rows={3}
@@ -897,13 +927,17 @@ export default function VehicleWorkModal({
                         className={textareaClass}
                       />
                     </Field>
+                  </div>
 
+                  <div className="xl:col-span-2">
                     <Field label="Notes">
                       <textarea
                         rows={3}
                         value={form.notes}
                         disabled={formDisabled}
-                        onChange={(event) => updateField("notes", event.target.value)}
+                        onChange={(event) =>
+                          updateField("notes", event.target.value)
+                        }
                         placeholder="Workshop notes..."
                         className={textareaClass}
                       />
@@ -917,12 +951,12 @@ export default function VehicleWorkModal({
                   </div>
                 )}
 
-                <div className="sticky bottom-0 -mx-3 mt-4 flex gap-2 border-t border-[#dfe2e6] bg-[#f5f6f8]/95 px-3 py-3 backdrop-blur sm:static sm:mx-0 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:pt-1">
+                <div className="mt-4 flex justify-end gap-2 border-t border-[#dfe2e6] pt-3">
                   <button
                     type="button"
                     onClick={newWorkItem}
                     disabled={formDisabled}
-                    className="h-11 flex-1 rounded-lg border border-[#d8dce1] bg-white px-4 text-sm font-medium hover:bg-gray-50 disabled:opacity-40 sm:flex-none"
+                    className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Clear
                   </button>
@@ -930,13 +964,13 @@ export default function VehicleWorkModal({
                   <button
                     type="submit"
                     disabled={saving || formDisabled}
-                    className="h-11 flex-1 rounded-lg bg-[#1d2228] px-5 text-sm font-medium text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+                    className="rounded-lg bg-[#1d2228] px-5 py-2 text-sm font-medium text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {saving
                       ? "Saving..."
                       : mode === "edit"
-                      ? "Save Changes"
-                      : "Add Work"}
+                        ? "Save Changes"
+                        : "Add Work"}
                   </button>
                 </div>
               </form>
@@ -982,8 +1016,11 @@ function formatCategory(category?: string) {
 const inputClass =
   "h-11 w-full min-w-0 rounded-lg border border-[#d8dce1] bg-white px-3 text-sm text-[#1d2228] outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a] disabled:bg-gray-50 disabled:text-gray-400 sm:h-[38px]";
 
+const selectClass =
+  "h-11 w-full min-w-0 rounded-lg border border-[#d8dce1] bg-white px-3 text-sm text-[#1d2228] outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a] disabled:bg-gray-50 disabled:text-gray-400 sm:h-[38px]";
+
 const textareaClass =
-  "min-h-[86px] w-full rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-sm text-[#1d2228] outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a] disabled:bg-gray-50 disabled:text-gray-400";
+  "min-h-[82px] w-full rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-sm text-[#1d2228] outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a] disabled:bg-gray-50 disabled:text-gray-400";
 
 function Field({
   label,
@@ -995,12 +1032,12 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <div className="mb-1 text-xs font-medium text-gray-600">
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-gray-600">
         {label}
         {required && <span className="ml-1 text-red-500">*</span>}
-      </div>
+      </span>
       {children}
-    </div>
+    </label>
   );
 }
