@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   useMemo,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+
+import {
+  useRouter,
+} from "next/navigation";
 
 import {
   Vehicle,
@@ -26,10 +30,13 @@ export default function WorkDashboard({
   workItems: WorkItem[];
   vehicles: Vehicle[];
 }) {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const [search, setSearch] =
-    useState("");
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
   const [
     vehicleFilter,
@@ -64,7 +71,29 @@ export default function WorkDashboard({
     );
 
   /*
+   * NON-WISHLIST VEHICLES
+   *
+   * Wishlist vehicles should not
+   * participate in workshop work.
+   */
+
+  const workVehicles =
+    useMemo(() => {
+      return vehicles.filter(
+        (vehicle) =>
+          String(
+            vehicle.ownershipStatus ||
+              ""
+          ).toLowerCase() !==
+          "wishlist"
+      );
+    }, [vehicles]);
+
+  /*
    * VEHICLE LOOKUP
+   *
+   * IMPORTANT:
+   * Always normalize IDs to strings.
    */
 
   const vehicleMap =
@@ -73,15 +102,17 @@ export default function WorkDashboard({
         string,
         Vehicle
       >(
-        vehicles.map(
+        workVehicles.map(
           (vehicle) =>
             [
-              vehicle.id,
+              String(
+                vehicle.id
+              ),
               vehicle,
             ] as const
         )
       );
-    }, [vehicles]);
+    }, [workVehicles]);
 
   /*
    * CATEGORIES
@@ -119,40 +150,78 @@ export default function WorkDashboard({
 
       return workItems.filter(
         (item) => {
-          const vehicle =
-            vehicleMap.get(
+          /*
+           * Normalize item vehicle ID
+           * to string before lookup.
+           */
+          const itemVehicleId =
+            String(
               item.vehicleId
             );
+
+          const vehicle =
+            vehicleMap.get(
+              itemVehicleId
+            );
+
+          /*
+           * If this work item belongs
+           * to a Wishlist vehicle,
+           * hide it from Work page.
+           */
+          if (!vehicle) {
+            return false;
+          }
 
           const matchesSearch =
             !query ||
             item.title
               ?.toLowerCase()
-              .includes(query) ||
+              .includes(
+                query
+              ) ||
             item.category
               ?.toLowerCase()
-              .includes(query) ||
+              .includes(
+                query
+              ) ||
             item.workDescription
               ?.toLowerCase()
-              .includes(query) ||
+              .includes(
+                query
+              ) ||
             item.notes
               ?.toLowerCase()
-              .includes(query) ||
-            vehicle?.name
+              .includes(
+                query
+              ) ||
+            vehicle.name
               ?.toLowerCase()
-              .includes(query) ||
-            vehicle?.make
+              .includes(
+                query
+              ) ||
+            vehicle.make
               ?.toLowerCase()
-              .includes(query) ||
-            vehicle?.model
+              .includes(
+                query
+              ) ||
+            vehicle.model
               ?.toLowerCase()
-              .includes(query);
+              .includes(
+                query
+              );
 
+          /*
+           * FIX:
+           * compare string to string.
+           */
           const matchesVehicle =
             vehicleFilter ===
               "All" ||
-            item.vehicleId ===
-              vehicleFilter;
+            itemVehicleId ===
+              String(
+                vehicleFilter
+              );
 
           const matchesStatus =
             statusFilter ===
@@ -195,13 +264,35 @@ export default function WorkDashboard({
     ]);
 
   /*
+   * WORK ITEMS THAT BELONG TO
+   * NON-WISHLIST VEHICLES
+   *
+   * Use these for statistics as well.
+   */
+
+  const validWorkItems =
+    useMemo(() => {
+      return workItems.filter(
+        (item) =>
+          vehicleMap.has(
+            String(
+              item.vehicleId
+            )
+          )
+      );
+    }, [
+      workItems,
+      vehicleMap,
+    ]);
+
+  /*
    * STATS
    */
 
   const stats =
     useMemo(() => {
       const open =
-        workItems.filter(
+        validWorkItems.filter(
           (item) =>
             item.status !==
               "Completed" &&
@@ -210,10 +301,12 @@ export default function WorkDashboard({
         ).length;
 
       const priority1 =
-        workItems.filter(
+        validWorkItems.filter(
           (item) =>
-            (item.priority ??
-              3) === 1 &&
+            Number(
+              item.priority ??
+                3
+            ) === 1 &&
             item.status !==
               "Completed" &&
             item.status !==
@@ -221,14 +314,14 @@ export default function WorkDashboard({
         ).length;
 
       const partsRequired =
-        workItems.filter(
+        validWorkItems.filter(
           (item) =>
             item.status ===
             "Parts Required"
         ).length;
 
       const inProgress =
-        workItems.filter(
+        validWorkItems.filter(
           (item) =>
             item.status ===
             "In Progress"
@@ -236,7 +329,7 @@ export default function WorkDashboard({
 
       return {
         total:
-          workItems.length,
+          validWorkItems.length,
 
         open,
 
@@ -246,7 +339,9 @@ export default function WorkDashboard({
 
         inProgress,
       };
-    }, [workItems]);
+    }, [
+      validWorkItems,
+    ]);
 
   /*
    * EDIT EXISTING WORK
@@ -257,7 +352,9 @@ export default function WorkDashboard({
   ) {
     const vehicle =
       vehicleMap.get(
-        item.vehicleId
+        String(
+          item.vehicleId
+        )
       );
 
     if (!vehicle) {
@@ -266,6 +363,7 @@ export default function WorkDashboard({
 
     setWorkModal({
       vehicle,
+
       workItemId:
         item.id,
     });
@@ -280,14 +378,15 @@ export default function WorkDashboard({
      * If page is already filtered
      * to one vehicle, use it.
      */
-
     if (
       vehicleFilter !==
       "All"
     ) {
       const vehicle =
         vehicleMap.get(
-          vehicleFilter
+          String(
+            vehicleFilter
+          )
         );
 
       if (vehicle) {
@@ -304,7 +403,6 @@ export default function WorkDashboard({
      * Work popup with vehicle
      * selector inside it.
      */
-
     setWorkModal({});
   }
 
@@ -314,91 +412,125 @@ export default function WorkDashboard({
 
   function clearFilters() {
     setSearch("");
-    setVehicleFilter("All");
-    setStatusFilter("All");
-    setPriorityFilter("All");
-    setCategoryFilter("All");
+
+    setVehicleFilter(
+      "All"
+    );
+
+    setStatusFilter(
+      "All"
+    );
+
+    setPriorityFilter(
+      "All"
+    );
+
+    setCategoryFilter(
+      "All"
+    );
   }
 
   const filtersActive =
     search !== "" ||
-    vehicleFilter !== "All" ||
-    statusFilter !== "All" ||
-    priorityFilter !== "All" ||
-    categoryFilter !== "All";
+    vehicleFilter !==
+      "All" ||
+    statusFilter !==
+      "All" ||
+    priorityFilter !==
+      "All" ||
+    categoryFilter !==
+      "All";
 
   return (
     <main className="min-h-screen bg-[#f5f6f8] text-[#1d2228]">
-      {/* HEADER */}
+      {/* =====================================================
+          COMBINED PAGE HEADER + SUMMARY
+          ===================================================== */}
 
-      <header className="border-b border-[#e1e4e8] bg-white">
-        <div className="flex items-center justify-between px-5 py-7 lg:px-8">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Work
-            </h1>
+      <section className="border-b border-[#e1e4e8] bg-white">
+        <div className="px-5 py-5 lg:px-8">
+          {/* TITLE + ADD WORK */}
 
-            <p className="mt-1 text-sm text-gray-500">
-              Workshop jobs across all vehicles
-            </p>
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Work
+              </h1>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Workshop jobs across all vehicles
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                startAddWork
+              }
+              className="shrink-0 rounded-lg bg-[#1d2228] px-5 py-2.5 text-sm font-medium text-white hover:bg-black"
+            >
+              + Add Work
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={
-              startAddWork
-            }
-            className="rounded-lg bg-[#1d2228] px-5 py-3 text-sm font-medium text-white hover:bg-black"
-          >
-            + Add Work
-          </button>
+          {/* COMPACT SUMMARY */}
+
+          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            <SummaryCard
+              label="Total Work"
+              value={
+                stats.total
+              }
+            />
+
+            <SummaryCard
+              label="Open"
+              value={
+                stats.open
+              }
+            />
+
+            <SummaryCard
+              label="Priority 1"
+              value={
+                stats.priority1
+              }
+            />
+
+            <SummaryCard
+              label="Parts Required"
+              value={
+                stats.partsRequired
+              }
+            />
+
+            <SummaryCard
+              label="In Progress"
+              value={
+                stats.inProgress
+              }
+            />
+          </div>
         </div>
-      </header>
+      </section>
 
-      <div className="px-5 py-7 lg:px-8">
-        {/* SUMMARY */}
+      {/* =====================================================
+          CONTENT
+          ===================================================== */}
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-          <SummaryCard
-            label="Total Work"
-            value={stats.total}
-          />
-
-          <SummaryCard
-            label="Open"
-            value={stats.open}
-          />
-
-          <SummaryCard
-            label="Priority 1"
-            value={stats.priority1}
-          />
-
-          <SummaryCard
-            label="Parts Required"
-            value={
-              stats.partsRequired
-            }
-          />
-
-          <SummaryCard
-            label="In Progress"
-            value={
-              stats.inProgress
-            }
-          />
-        </div>
-
+      <div className="px-5 py-6 lg:px-8">
         {/* WORK ITEMS */}
 
-        <section className="mt-8">
-          <div className="mb-5">
+        <section>
+          <div className="mb-4">
             <h2 className="text-xl font-semibold">
               Work Items
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              {filteredItems.length}{" "}
+              {
+                filteredItems.length
+              }{" "}
               {filteredItems.length ===
               1
                 ? "work item"
@@ -415,10 +547,13 @@ export default function WorkDashboard({
 
               <input
                 type="search"
-                value={search}
+                value={
+                  search
+                }
                 onChange={(e) =>
                   setSearch(
-                    e.target.value
+                    e.target
+                      .value
                   )
                 }
                 placeholder="Search work or vehicle..."
@@ -435,7 +570,8 @@ export default function WorkDashboard({
                 }
                 onChange={(e) =>
                   setVehicleFilter(
-                    e.target.value
+                    e.target
+                      .value
                   )
                 }
                 className={
@@ -446,12 +582,16 @@ export default function WorkDashboard({
                   All Vehicles
                 </option>
 
-                {vehicles
+                {workVehicles
                   .slice()
-                  .sort((a, b) =>
-                    a.name.localeCompare(
-                      b.name
-                    )
+                  .sort(
+                    (
+                      a,
+                      b
+                    ) =>
+                      a.name.localeCompare(
+                        b.name
+                      )
                   )
                   .map(
                     (vehicle) => (
@@ -459,9 +599,9 @@ export default function WorkDashboard({
                         key={
                           vehicle.id
                         }
-                        value={
+                        value={String(
                           vehicle.id
-                        }
+                        )}
                       >
                         {
                           vehicle.name
@@ -479,7 +619,8 @@ export default function WorkDashboard({
                 }
                 onChange={(e) =>
                   setStatusFilter(
-                    e.target.value
+                    e.target
+                      .value
                   )
                 }
                 className={
@@ -535,7 +676,8 @@ export default function WorkDashboard({
                 }
                 onChange={(e) =>
                   setPriorityFilter(
-                    e.target.value
+                    e.target
+                      .value
                   )
                 }
                 className={
@@ -571,7 +713,8 @@ export default function WorkDashboard({
                 }
                 onChange={(e) =>
                   setCategoryFilter(
-                    e.target.value
+                    e.target
+                      .value
                   )
                 }
                 className={
@@ -669,7 +812,9 @@ export default function WorkDashboard({
                       (item) => {
                         const vehicle =
                           vehicleMap.get(
-                            item.vehicleId
+                            String(
+                              item.vehicleId
+                            )
                           );
 
                         return (
@@ -840,12 +985,12 @@ export default function WorkDashboard({
                   ) : (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={
+                          9
+                        }
                         className="px-5 py-16 text-center text-sm text-gray-500"
                       >
-                        No work items
-                        match the selected
-                        filters.
+                        No work items match the selected filters.
                       </td>
                     </tr>
                   )}
@@ -863,7 +1008,9 @@ export default function WorkDashboard({
           vehicle={
             workModal.vehicle
           }
-          vehicles={vehicles}
+          vehicles={
+            workVehicles
+          }
           initialWorkItemId={
             workModal.workItemId
           }
@@ -875,7 +1022,9 @@ export default function WorkDashboard({
             router.refresh();
           }}
           onClose={() => {
-            setWorkModal(null);
+            setWorkModal(
+              null
+            );
 
             /*
              * Also refresh when closing.
@@ -897,6 +1046,8 @@ const inputClass =
 
 /*
  * SUMMARY CARD
+ *
+ * More compact than before.
  */
 
 function SummaryCard({
@@ -907,12 +1058,12 @@ function SummaryCard({
   value: number;
 }) {
   return (
-    <div className="rounded-xl border border-[#dfe2e6] bg-white px-5 py-5">
-      <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
+    <div className="rounded-xl border border-[#dfe2e6] bg-[#fafafa] px-4 py-3">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
         {label}
       </div>
 
-      <div className="mt-3 text-2xl font-semibold">
+      <div className="mt-1.5 text-xl font-semibold">
         {value}
       </div>
     </div>
