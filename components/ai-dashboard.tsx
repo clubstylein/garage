@@ -52,6 +52,14 @@ function normalize(
     );
 }
 
+const commandExamples = [
+  "new part order crashbar",
+  "clubstyle panamerica create work seating stitching",
+  "add customer Rajesh Kumar vip phone 9876543210",
+  "create vehicle for clubstyle 2021 Yamaha Tenere 700",
+  "create estimate for Rajesh",
+];
+
 export default function AiDashboard({
   customers,
   vehicles,
@@ -76,6 +84,12 @@ export default function AiDashboard({
     setUseAI,
   ] =
     useState(false);
+
+  const [
+    searchOnline,
+    setSearchOnline,
+  ] =
+    useState(true);
 
   const [
     interpretation,
@@ -248,6 +262,10 @@ export default function AiDashboard({
                   input.trim(),
 
                 useAI,
+
+                searchOnline:
+                  useAI &&
+                  searchOnline,
 
                 context: {
                   customers:
@@ -539,38 +557,123 @@ export default function AiDashboard({
         </div>
       </section>
 
-      <div className="mx-auto max-w-5xl px-5 py-5 lg:px-8">
+      <div className="px-5 py-5 lg:px-8">
         <section className="rounded-xl border border-[#dfe2e6] bg-white p-4">
-          <div className="mb-3 flex items-center justify-between gap-4">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={
-                  useAI
-                }
-                onChange={(
-                  event
-                ) =>
-                  setUseAI(
-                    event.target
-                      .checked
-                  )
-                }
-                className="h-4 w-4"
-              />
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={
+                    useAI
+                  }
+                  onChange={(
+                    event
+                  ) => {
+                    setUseAI(
+                      event.target
+                        .checked
+                    );
 
-              Use AI
-            </label>
+                    if (
+                      event.target
+                        .checked
+                    ) {
+                      setSearchOnline(
+                        true
+                      );
+                    }
+                  }}
+                  className="h-4 w-4"
+                />
+
+                Use AI
+              </label>
+
+              <label
+                className={`flex items-center gap-2 text-sm ${
+                  useAI
+                    ? "text-gray-700"
+                    : "text-gray-400"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={
+                    useAI &&
+                    searchOnline
+                  }
+                  disabled={
+                    !useAI
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setSearchOnline(
+                      event.target
+                        .checked
+                    )
+                  }
+                  className="h-4 w-4"
+                />
+
+                Search online for details & image
+              </label>
+            </div>
 
             <span className="text-xs text-gray-400">
               {useAI
-                ? "AI parser"
+                ? searchOnline
+                  ? "AI + Web Research"
+                  : "AI parser"
                 : "Standard parser"}
             </span>
           </div>
 
+          <div className="mb-4">
+            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
+              Examples
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {commandExamples.map(
+                (
+                  example
+                ) => (
+                  <button
+                    key={
+                      example
+                    }
+                    type="button"
+                    onClick={() => {
+                      setInput(
+                        example
+                      );
+
+                      setInterpretation(
+                        null
+                      );
+
+                      setError(
+                        ""
+                      );
+                    }}
+                    className="rounded-lg border border-[#d8dce1] bg-[#fafafa] px-3 py-2 text-left text-xs font-medium text-gray-600 transition hover:border-[#aeb4bb] hover:bg-white hover:text-[#1d2228]"
+                    title="Copy example into command box"
+                  >
+                    {example}
+                  </button>
+                )
+              )}
+            </div>
+
+            <p className="mt-2 text-xs text-gray-400">
+              Click an example to copy it into the command box, then edit it as needed.
+            </p>
+          </div>
+
           <textarea
-            rows={7}
+            rows={3}
             value={
               input
             }
@@ -582,12 +685,7 @@ export default function AiDashboard({
                   .value
               )
             }
-            placeholder={`Examples:
-new part order crashbar
-clubstyle panamerica create work seating stitching
-add customer Rajesh Kumar vip phone 9876543210
-create vehicle for clubstyle 2021 Yamaha Tenere 700
-create estimate for Rajesh`}
+            placeholder="Enter a Garage command..."
             className="w-full resize-y rounded-xl border border-[#d8dce1] bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]"
           />
 
@@ -627,7 +725,11 @@ create estimate for Rajesh`}
                   <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
                     {interpretation.parser ===
                     "ai"
-                      ? "AI"
+                      ? interpretation
+                          .research
+                          ?.searchedOnline
+                        ? "AI + Web Research"
+                        : "AI"
                       : "Standard Parser"}
                   </span>
 
@@ -697,6 +799,120 @@ create estimate for Rajesh`}
                 )
               )}
             </div>
+
+            {interpretation.research?.searchedOnline && (
+              <div className="border-t border-[#e1e4e8] bg-[#fafafa] px-4 py-4">
+                <div className="flex flex-col gap-4 lg:flex-row">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                      Online Research
+                    </div>
+
+                    {interpretation.research.summary && (
+                      <p className="mt-1 text-sm leading-6 text-gray-700">
+                        {interpretation.research.summary}
+                      </p>
+                    )}
+
+                    {interpretation.research.details &&
+                      interpretation.research.details.length > 0 && (
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {interpretation.research.details.map(
+                            (
+                              detail,
+                              index
+                            ) => (
+                              <div
+                                key={`${detail.label}-${index}`}
+                                className="rounded-lg border border-[#e1e4e8] bg-white px-3 py-2"
+                              >
+                                <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                                  {detail.label}
+                                </div>
+
+                                <div className="mt-1 text-sm">
+                                  {detail.value}
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      )}
+
+                    {interpretation.research.sources &&
+                      interpretation.research.sources.length > 0 && (
+                        <div className="mt-3">
+                          <div className="text-xs font-medium text-gray-500">
+                            Sources
+                          </div>
+
+                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                            {interpretation.research.sources.map(
+                              (
+                                source,
+                                index
+                              ) => (
+                                <a
+                                  key={`${source.url}-${index}`}
+                                  href={source.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs text-blue-600 hover:underline"
+                                >
+                                  {source.title}
+                                </a>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                    {interpretation.research.warnings &&
+                      interpretation.research.warnings.length > 0 && (
+                        <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-amber-700">
+                          {interpretation.research.warnings.map(
+                            (
+                              warning,
+                              index
+                            ) => (
+                              <li key={index}>
+                                {warning}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      )}
+                  </div>
+
+                  {interpretation.research.imageUrl && (
+                    <div className="w-full shrink-0 lg:w-64">
+                      <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                        Suggested Image
+                      </div>
+
+                      <div className="mt-2 overflow-hidden rounded-lg border border-[#e1e4e8] bg-white">
+                        <img
+                          src={interpretation.research.imageUrl}
+                          alt="Suggested online reference"
+                          className="h-40 w-full object-contain"
+                        />
+                      </div>
+
+                      {interpretation.research.imageSourceUrl && (
+                        <a
+                          href={interpretation.research.imageSourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-block text-xs text-blue-600 hover:underline"
+                        >
+                          Open image source
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {command?.warnings &&
               command.warnings

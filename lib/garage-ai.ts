@@ -75,7 +75,24 @@ export type GarageAIContext = {
   }>;
 };
 
+export type GarageAIResearch = {
+  searchedOnline: boolean;
+  summary?: string;
+  details?: Array<{
+    label: string;
+    value: string;
+  }>;
+  imageUrl?: string;
+  imageSourceUrl?: string;
+  sources?: Array<{
+    title: string;
+    url: string;
+  }>;
+  warnings?: string[];
+};
+
 export type GarageAIInterpretation = {
   parser: "standard" | "ai";
   command: GarageAICommand;
+  research?: GarageAIResearch;
 };

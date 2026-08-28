@@ -799,7 +799,38 @@ function standardParse(
   };
 }
 
-async function aiParse(
+
+function compactObject<T extends Record<string, any>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([, item]) =>
+        item !== null &&
+        item !== undefined &&
+        item !== ""
+    )
+  ) as T;
+}
+
+type AIResearchResult = {
+  command: GarageAICommand;
+  research?: {
+    searchedOnline: boolean;
+    summary?: string;
+    details?: Array<{
+      label: string;
+      value: string;
+    }>;
+    imageUrl?: string;
+    imageSourceUrl?: string;
+    sources?: Array<{
+      title: string;
+      url: string;
+    }>;
+    warnings?: string[];
+  };
+};
+
+async function aiParseBase(
   input: string,
   context: GarageAIContext
 ): Promise<GarageAICommand> {
@@ -1267,6 +1298,429 @@ Rules:
     GarageAICommand;
 }
 
+
+async function aiParse(
+  input: string,
+  context: GarageAIContext,
+  searchOnline: boolean
+): Promise<AIResearchResult> {
+  const command =
+    await aiParseBase(
+      input,
+      context
+    );
+
+  if (
+    !searchOnline ||
+    command.action === "unknown"
+  ) {
+    return {
+      command,
+      research: {
+        searchedOnline: false,
+      },
+    };
+  }
+
+  if (!OPENAI_API_KEY) {
+    return {
+      command,
+      research: {
+        searchedOnline: false,
+        warnings: [
+          "Online enrichment was requested, but OPENAI_API_KEY is not configured.",
+        ],
+      },
+    };
+  }
+
+  const openai =
+    new OpenAI({
+      apiKey:
+        OPENAI_API_KEY,
+    });
+
+  const enrichmentPrompt = `
+You are enriching a structured command for the ClubStyle Garage application.
+
+ORIGINAL USER COMMAND:
+${input}
+
+PARSED COMMAND:
+${JSON.stringify(command, null, 2)}
+
+TASK:
+Search the web only when it is useful for this command.
+
+For CREATE PART:
+- Find useful product/part details such as likely name, brand/manufacturer, part number, fitment, description, and indicative price only if a credible source supports them.
+- Prefer official manufacturer/dealer pages and reputable parts retailers.
+- If a suitable public product image URL is clearly available from a credible source, return it. Never invent an image URL.
+
+For CREATE VEHICLE:
+- Find reliable model information such as official make/model/variant, engine displacement/type, power, torque, transmission, fuel capacity, wet/curb weight, wheel sizes, and other useful technical details.
+- Prefer manufacturer or authoritative technical sources.
+- If a representative public image URL is clearly available from a credible source, return it. Never invent an image URL.
+
+For CREATE WORK:
+- Research only if the command refers to a specific component/procedure where a short technical clarification materially helps.
+- Do not turn the work form into a technical essay.
+
+For CREATE CUSTOMER:
+- Do not search personal information online.
+
+For CREATE ESTIMATE / INVOICE:
+- Do not search customer personal information online. Research only clearly identified commercial parts/products if needed.
+
+Return:
+1. An enriched command. Preserve the user's requested action.
+2. A short research summary.
+3. Compact label/value details useful to the Garage user.
+4. Up to 5 source pages.
+5. imageUrl and imageSourceUrl only when confidently found from a public page. Otherwise null.
+6. Warnings for uncertain/conflicting information.
+
+Never fabricate part numbers, prices, fitment, technical specifications, sources, or image URLs.
+`;
+
+  const response =
+    await openai.responses.create({
+      model:
+        OPENAI_AI_COMMAND_MODEL,
+
+      reasoning: {
+        effort: "low",
+      },
+
+      tools: [
+        {
+          type:
+            "web_search",
+        },
+      ],
+
+      input: [
+        {
+          role:
+            "system",
+          content:
+            "You enrich motorcycle garage commands using careful web research. Prefer authoritative sources and never invent missing data.",
+        },
+        {
+          role:
+            "user",
+          content:
+            enrichmentPrompt,
+        },
+      ],
+
+      text: {
+        format: {
+          type:
+            "json_schema",
+
+          name:
+            "garage_command_enrichment",
+
+          strict:
+            true,
+
+          schema: {
+            type:
+              "object",
+
+            properties: {
+              command: {
+                type:
+                  "object",
+
+                properties: {
+                  action: {
+                    type:
+                      "string",
+                    enum: [
+                      "create_work",
+                      "create_part",
+                      "create_customer",
+                      "create_vehicle",
+                      "create_estimate",
+                      "create_invoice",
+                      "unknown",
+                    ],
+                  },
+                  confidence: {
+                    type:
+                      "string",
+                    enum: [
+                      "high",
+                      "medium",
+                      "low",
+                    ],
+                  },
+                  summary: { type: "string" },
+                  customer: { type: ["string", "null"] },
+                  vehicle: { type: ["string", "null"] },
+                  title: { type: ["string", "null"] },
+                  category: { type: ["string", "null"] },
+                  description: { type: ["string", "null"] },
+                  priority: { type: ["integer", "null"] },
+                  status: { type: ["string", "null"] },
+                  notes: { type: ["string", "null"] },
+                  partName: { type: ["string", "null"] },
+                  partNumber: { type: ["string", "null"] },
+                  brand: { type: ["string", "null"] },
+                  supplier: { type: ["string", "null"] },
+                  supplierPartNumber: { type: ["string", "null"] },
+                  costPrice: { type: ["number", "null"] },
+                  sellingPrice: { type: ["number", "null"] },
+                  currency: { type: ["string", "null"] },
+                  customerName: { type: ["string", "null"] },
+                  customerCategory: { type: ["string", "null"] },
+                  phone: { type: ["string", "null"] },
+                  email: { type: ["string", "null"] },
+                  address: { type: ["string", "null"] },
+                  city: { type: ["string", "null"] },
+                  state: { type: ["string", "null"] },
+                  pincode: { type: ["string", "null"] },
+                  country: { type: ["string", "null"] },
+                  vehicleName: { type: ["string", "null"] },
+                  make: { type: ["string", "null"] },
+                  model: { type: ["string", "null"] },
+                  variant: { type: ["string", "null"] },
+                  year: { type: ["integer", "null"] },
+                  registrationNumber: { type: ["string", "null"] },
+                  vin: { type: ["string", "null"] },
+                  enginePlatform: { type: ["string", "null"] },
+                  engineCc: { type: ["number", "null"] },
+                  odometer: { type: ["number", "null"] },
+                  odometerUnit: {
+                    type: ["string", "null"],
+                    enum: ["km", "mi", null],
+                  },
+                  location: { type: ["string", "null"] },
+                  warnings: {
+                    type:
+                      "array",
+                    items: {
+                      type:
+                        "string",
+                    },
+                  },
+                },
+
+                required: [
+                  "action",
+                  "confidence",
+                  "summary",
+                  "customer",
+                  "vehicle",
+                  "title",
+                  "category",
+                  "description",
+                  "priority",
+                  "status",
+                  "notes",
+                  "partName",
+                  "partNumber",
+                  "brand",
+                  "supplier",
+                  "supplierPartNumber",
+                  "costPrice",
+                  "sellingPrice",
+                  "currency",
+                  "customerName",
+                  "customerCategory",
+                  "phone",
+                  "email",
+                  "address",
+                  "city",
+                  "state",
+                  "pincode",
+                  "country",
+                  "vehicleName",
+                  "make",
+                  "model",
+                  "variant",
+                  "year",
+                  "registrationNumber",
+                  "vin",
+                  "enginePlatform",
+                  "engineCc",
+                  "odometer",
+                  "odometerUnit",
+                  "location",
+                  "warnings",
+                ],
+
+                additionalProperties:
+                  false,
+              },
+
+              research: {
+                type:
+                  "object",
+
+                properties: {
+                  summary: {
+                    type: [
+                      "string",
+                      "null",
+                    ],
+                  },
+
+                  details: {
+                    type:
+                      "array",
+                    items: {
+                      type:
+                        "object",
+                      properties: {
+                        label: {
+                          type:
+                            "string",
+                        },
+                        value: {
+                          type:
+                            "string",
+                        },
+                      },
+                      required: [
+                        "label",
+                        "value",
+                      ],
+                      additionalProperties:
+                        false,
+                    },
+                  },
+
+                  imageUrl: {
+                    type: [
+                      "string",
+                      "null",
+                    ],
+                  },
+
+                  imageSourceUrl: {
+                    type: [
+                      "string",
+                      "null",
+                    ],
+                  },
+
+                  sources: {
+                    type:
+                      "array",
+                    items: {
+                      type:
+                        "object",
+                      properties: {
+                        title: {
+                          type:
+                            "string",
+                        },
+                        url: {
+                          type:
+                            "string",
+                        },
+                      },
+                      required: [
+                        "title",
+                        "url",
+                      ],
+                      additionalProperties:
+                        false,
+                    },
+                  },
+
+                  warnings: {
+                    type:
+                      "array",
+                    items: {
+                      type:
+                        "string",
+                    },
+                  },
+                },
+
+                required: [
+                  "summary",
+                  "details",
+                  "imageUrl",
+                  "imageSourceUrl",
+                  "sources",
+                  "warnings",
+                ],
+
+                additionalProperties:
+                  false,
+              },
+            },
+
+            required: [
+              "command",
+              "research",
+            ],
+
+            additionalProperties:
+              false,
+          },
+        },
+      },
+    });
+
+  const parsed =
+    JSON.parse(
+      response.output_text
+    );
+
+  return {
+    command:
+      compactObject(
+        parsed.command
+      ) as GarageAICommand,
+
+    research: {
+      searchedOnline: true,
+      summary:
+        parsed.research
+          .summary ||
+        undefined,
+      details:
+        Array.isArray(
+          parsed.research
+            .details
+        )
+          ? parsed.research
+              .details
+          : [],
+      imageUrl:
+        parsed.research
+          .imageUrl ||
+        undefined,
+      imageSourceUrl:
+        parsed.research
+          .imageSourceUrl ||
+        undefined,
+      sources:
+        Array.isArray(
+          parsed.research
+            .sources
+        )
+          ? parsed.research
+              .sources
+          : [],
+      warnings:
+        Array.isArray(
+          parsed.research
+            .warnings
+        )
+          ? parsed.research
+              .warnings
+          : [],
+    },
+  };
+}
+
 export async function POST(
   request: Request
 ) {
@@ -1281,6 +1735,11 @@ export async function POST(
       Boolean(
         body.useAI
       );
+
+    const searchOnline =
+      useAI &&
+      body.searchOnline !==
+        false;
 
     const context:
       GarageAIContext = {
@@ -1313,24 +1772,42 @@ export async function POST(
       );
     }
 
+    if (useAI) {
+      const result =
+        await aiParse(
+          input,
+          context,
+          searchOnline
+        );
+
+      return NextResponse.json({
+        parser:
+          "ai",
+
+        command:
+          result.command,
+
+        research:
+          result.research,
+      });
+    }
+
     const command =
-      useAI
-        ? await aiParse(
-            input,
-            context
-          )
-        : standardParse(
-            input,
-            context
-          );
+      standardParse(
+        input,
+        context
+      );
 
     return NextResponse.json({
       parser:
-        useAI
-          ? "ai"
-          : "standard",
+        "standard",
 
       command,
+
+      research: {
+        searchedOnline:
+          false,
+      },
     });
   } catch (error) {
     console.error(
