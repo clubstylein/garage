@@ -16,6 +16,7 @@ import {
 
 import AddCustomerModal from "@/components/add-customer-modal";
 import CustomerSearchModal from "@/components/customer-search-modal";
+import WorkItemPartsPanel from "@/components/work-item-parts-panel";
 
 type Mode = "create" | "edit";
 type VehicleMode = "existing" | "free-text";
@@ -987,6 +988,18 @@ export default function VehicleWorkModal({
                     </Field>
                   </div>
                 </div>
+
+                {mode === "edit" && form.id ? (
+                  <WorkItemPartsPanel
+                    key={String(form.id)}
+                    workItemId={String(form.id)}
+                    onChanged={onChanged}
+                  />
+                ) : (
+                  <div className="mt-4 rounded-xl border border-dashed border-[#d8dce1] bg-white px-4 py-3 text-xs text-gray-500">
+                    Save the work item first, then you can add parts needed or used for this job.
+                  </div>
+                )}
 
                 {error && (
                   <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
