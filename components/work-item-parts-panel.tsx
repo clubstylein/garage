@@ -76,7 +76,7 @@ export default function WorkItemPartsPanel({
   }
 
   return (
-    <section className="mt-4 overflow-hidden rounded-xl border border-[#dfe2e6] bg-white">
+    <section className="overflow-hidden rounded-xl border border-[#dfe2e6] bg-white">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e1e4e8] px-3 py-2.5 sm:px-4">
         <div>
           <div className="text-sm font-semibold">Parts for this work item</div>

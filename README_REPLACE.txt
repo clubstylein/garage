@@ -1,13 +1,16 @@
-ClubStyle Garage - Parts UI replacement set
+ClubStyle Garage — Work Tabs + Compact Parts Master
 
-This set:
-- changes Work Item parts to a read-only grid
-- Add/Edit Part-for-Work happens in popup
-- heading is "Parts for this work item"
-- adds Parts top-menu and /parts page
-- Parts page mirrors Work page look/filters
-- Work grid +Work button becomes +Part
-- +Part opens Edit Work and automatically opens Add Part popup
-- keeps decimal quantity support
+Replace these files:
 
-Extract into repository root with overwrite.
+components/vehicle-work-modal.tsx
+components/work-item-parts-panel.tsx
+components/part-form-modal.tsx
+
+Changes:
+- Add/Edit Work now has Main and Parts tabs.
+- Main contains Customer/Vehicle/Work fields through Notes.
+- Parts tab contains the linked-parts grid only.
+- Clicking +Part from the Work page continues to open the Work item directly on Parts and opens Add Part.
+- New unsaved Work items show a save-first message on the Parts tab.
+- Parts page Add/Edit popup is compact and edits only garage_parts master data.
+- Work-specific quantity/status/pricing/billable values remain in garage_work_item_parts and are edited from the Work item Parts tab.

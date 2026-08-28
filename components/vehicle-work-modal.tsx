@@ -20,6 +20,7 @@ import WorkItemPartsPanel from "@/components/work-item-parts-panel";
 
 type Mode = "create" | "edit";
 type VehicleMode = "existing" | "free-text";
+type WorkTab = "main" | "parts";
 
 type WorkForm = {
   id?: string;
@@ -94,6 +95,9 @@ export default function VehicleWorkModal({
   const [items, setItems] = useState<WorkItem[]>([]);
   const [mode, setMode] = useState<Mode>("create");
   const [vehicleMode, setVehicleMode] = useState<VehicleMode>("existing");
+  const [activeTab, setActiveTab] = useState<WorkTab>(
+    openAddPartOnLoad ? "parts" : "main"
+  );
 
   const initialCustomerId = vehicle
     ? String(vehicle.customerId ?? vehicle.customer?.id ?? "")
@@ -201,6 +205,12 @@ export default function VehicleWorkModal({
     if (!initialWorkItemId) return;
     void loadInitialWorkItem(initialWorkItemId);
   }, [initialWorkItemId, customers.length, selectableVehicles.length]);
+
+  useEffect(() => {
+    if (openAddPartOnLoad && mode === "edit" && form.id) {
+      setActiveTab("parts");
+    }
+  }, [openAddPartOnLoad, mode, form.id]);
 
   useEffect(() => {
     if (selectedCustomer) {
@@ -401,6 +411,7 @@ export default function VehicleWorkModal({
   }
 
   function newWorkItem() {
+    setActiveTab("main");
     setMode("create");
     setError("");
     setVehicleMode("existing");
@@ -597,7 +608,10 @@ export default function VehicleWorkModal({
                       <button
                         type="button"
                         key={item.id}
-                        onClick={() => fillEditForm(item)}
+                        onClick={() => {
+                          setActiveTab("main");
+                          fillEditForm(item);
+                        }}
                         className={`w-full rounded-lg border p-2.5 text-left transition ${
                           selected
                             ? "border-[#1d2228] bg-[#f5f6f8]"
@@ -649,6 +663,34 @@ export default function VehicleWorkModal({
                   )}
                 </div>
 
+                <div className="mb-4 flex items-center gap-1 border-b border-[#dfe2e6]">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("main")}
+                    className={`border-b-2 px-4 py-2 text-sm font-medium transition ${
+                      activeTab === "main"
+                        ? "border-[#1d2228] text-[#1d2228]"
+                        : "border-transparent text-gray-500 hover:text-[#1d2228]"
+                    }`}
+                  >
+                    Main
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("parts")}
+                    className={`border-b-2 px-4 py-2 text-sm font-medium transition ${
+                      activeTab === "parts"
+                        ? "border-[#1d2228] text-[#1d2228]"
+                        : "border-transparent text-gray-500 hover:text-[#1d2228]"
+                    }`}
+                  >
+                    Parts
+                  </button>
+                </div>
+
+                {activeTab === "main" ? (
+                  <>
                 <div className="grid gap-3 xl:grid-cols-4">
                   <div className="xl:col-span-4">
                     <Field label="Customer" required>
@@ -991,47 +1033,53 @@ export default function VehicleWorkModal({
                   </div>
                 </div>
 
-                {mode === "edit" && form.id ? (
-                  <WorkItemPartsPanel
-                    key={String(form.id)}
-                    workItemId={String(form.id)}
-                    onChanged={onChanged}
-                    openAddOnMount={openAddPartOnLoad}
-                  />
+
+
+                    {error && (
+                      <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                        {error}
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex justify-end gap-2 border-t border-[#dfe2e6] pt-3">
+                      <button
+                        type="button"
+                        onClick={newWorkItem}
+                        disabled={formDisabled}
+                        className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Clear
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={saving || formDisabled}
+                        className="rounded-lg bg-[#1d2228] px-5 py-2 text-sm font-medium text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {saving
+                          ? "Saving..."
+                          : mode === "edit"
+                            ? "Save Changes"
+                            : "Add Work"}
+                      </button>
+                    </div>
+                  </>
                 ) : (
-                  <div className="mt-4 rounded-xl border border-dashed border-[#d8dce1] bg-white px-4 py-3 text-xs text-gray-500">
-                    Save the work item first, then you can add parts needed or used for this job.
+                  <div>
+                    {mode === "edit" && form.id ? (
+                      <WorkItemPartsPanel
+                        key={String(form.id)}
+                        workItemId={String(form.id)}
+                        onChanged={onChanged}
+                        openAddOnMount={openAddPartOnLoad}
+                      />
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-[#d8dce1] bg-white px-4 py-10 text-center text-sm text-gray-500">
+                        Save the work item first, then you can add parts needed or used for this job.
+                      </div>
+                    )}
                   </div>
                 )}
-
-                {error && (
-                  <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                    {error}
-                  </div>
-                )}
-
-                <div className="mt-4 flex justify-end gap-2 border-t border-[#dfe2e6] pt-3">
-                  <button
-                    type="button"
-                    onClick={newWorkItem}
-                    disabled={formDisabled}
-                    className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Clear
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={saving || formDisabled}
-                    className="rounded-lg bg-[#1d2228] px-5 py-2 text-sm font-medium text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {saving
-                      ? "Saving..."
-                      : mode === "edit"
-                        ? "Save Changes"
-                        : "Add Work"}
-                  </button>
-                </div>
               </form>
             </div>
           </div>
