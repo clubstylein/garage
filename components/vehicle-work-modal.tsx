@@ -99,6 +99,13 @@ export default function VehicleWorkModal({
     openAddPartOnLoad ? "parts" : "main"
   );
 
+  // + Part from the Work dashboard is a one-shot action.
+  // Consume it after the Parts panel gets its first chance to open the editor,
+  // so switching Main -> Parts later does not reopen Add Part automatically.
+  const [autoOpenPartPending, setAutoOpenPartPending] = useState(
+    openAddPartOnLoad
+  );
+
   const initialCustomerId = vehicle
     ? String(vehicle.customerId ?? vehicle.customer?.id ?? "")
     : "";
@@ -211,6 +218,24 @@ export default function VehicleWorkModal({
       setActiveTab("parts");
     }
   }, [openAddPartOnLoad, mode, form.id]);
+
+  useEffect(() => {
+    if (
+      autoOpenPartPending &&
+      activeTab === "parts" &&
+      mode === "edit" &&
+      form.id
+    ) {
+      // The child panel opens the Add Part flow from the current true prop.
+      // Clearing this on the next tick makes the behavior one-shot even if
+      // the user later leaves the Parts tab and comes back.
+      const timer = window.setTimeout(() => {
+        setAutoOpenPartPending(false);
+      }, 0);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [autoOpenPartPending, activeTab, mode, form.id]);
 
   useEffect(() => {
     if (selectedCustomer) {
@@ -542,7 +567,7 @@ export default function VehicleWorkModal({
           if (event.target === event.currentTarget) onClose();
         }}
       >
-        <div className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-[#f5f6f8] shadow-2xl sm:max-h-[94vh]">
+        <div className="flex h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-[#f5f6f8] shadow-2xl sm:h-[94vh] lg:h-[740px] lg:max-h-[94vh]">
           <div className="flex shrink-0 items-center justify-between border-b border-[#dfe2e6] bg-white px-4 py-3 sm:px-5">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold">Work Items</h2>
@@ -638,18 +663,18 @@ export default function VehicleWorkModal({
               )}
             </aside>
 
-            <div className="order-1 min-h-0 overflow-y-auto p-3 sm:p-4 lg:order-2">
+            <div className="order-1 min-h-0 overflow-y-auto p-3 lg:order-2">
               <form onSubmit={handleSave}>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-base font-semibold">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <h3 className="shrink-0 text-base font-semibold">
                       {mode === "edit" ? "Edit Work" : "Add Work"}
                     </h3>
-                    <p className="mt-0.5 text-xs text-gray-500">
+                    <span className="truncate text-[11px] text-gray-400">
                       {mode === "edit"
-                        ? "Update work item."
-                        : "Create a new work item."}
-                    </p>
+                        ? "Update work item"
+                        : "Create a new work item"}
+                    </span>
                   </div>
 
                   {mode === "edit" && (
@@ -663,11 +688,11 @@ export default function VehicleWorkModal({
                   )}
                 </div>
 
-                <div className="mb-4 flex items-center gap-1 border-b border-[#dfe2e6]">
+                <div className="mb-3 flex items-center gap-1 border-b border-[#dfe2e6]">
                   <button
                     type="button"
                     onClick={() => setActiveTab("main")}
-                    className={`border-b-2 px-4 py-2 text-sm font-medium transition ${
+                    className={`border-b-2 px-3 py-1.5 text-sm font-medium transition ${
                       activeTab === "main"
                         ? "border-[#1d2228] text-[#1d2228]"
                         : "border-transparent text-gray-500 hover:text-[#1d2228]"
@@ -679,7 +704,7 @@ export default function VehicleWorkModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("parts")}
-                    className={`border-b-2 px-4 py-2 text-sm font-medium transition ${
+                    className={`border-b-2 px-3 py-1.5 text-sm font-medium transition ${
                       activeTab === "parts"
                         ? "border-[#1d2228] text-[#1d2228]"
                         : "border-transparent text-gray-500 hover:text-[#1d2228]"
@@ -1071,7 +1096,7 @@ export default function VehicleWorkModal({
                         key={String(form.id)}
                         workItemId={String(form.id)}
                         onChanged={onChanged}
-                        openAddOnMount={openAddPartOnLoad}
+                        openAddOnMount={autoOpenPartPending}
                       />
                     ) : (
                       <div className="rounded-xl border border-dashed border-[#d8dce1] bg-white px-4 py-10 text-center text-sm text-gray-500">

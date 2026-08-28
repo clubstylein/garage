@@ -26,6 +26,10 @@ export default function TopNav() {
       return pathname.startsWith("/parts");
     }
 
+    if (section === "billing") {
+      return pathname.startsWith("/billing");
+    }
+
     return false;
   }
 
@@ -91,6 +95,17 @@ export default function TopNav() {
           }
         >
           Parts
+        </NavLink>
+
+        <NavLink
+          href="/billing"
+          active={
+            isActive(
+              "billing"
+            )
+          }
+        >
+          Billing
         </NavLink>
       </nav>
     </div>

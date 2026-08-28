@@ -42,12 +42,14 @@ function formFromItem(item?: WorkItemPart | null): FormState {
 export default function WorkItemPartModal({
   workItemId,
   item,
+  startWithNewPart = false,
   onClose,
   onSaved,
   onRemoved,
 }: {
   workItemId: string;
   item?: WorkItemPart | null;
+  startWithNewPart?: boolean;
   onClose: () => void;
   onSaved: (item: WorkItemPart) => void;
   onRemoved?: (id: string) => void;
@@ -378,6 +380,7 @@ export default function WorkItemPartModal({
 
       {showPicker && (
         <PartPickerModal
+          startCreate={startWithNewPart}
           onClose={() => {
             if (part) setShowPicker(false);
             else if (editing) setShowPicker(false);

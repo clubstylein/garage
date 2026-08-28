@@ -18,6 +18,7 @@ export default function WorkItemPartsPanel({
   const [error, setError] = useState("");
   const [editingItem, setEditingItem] = useState<WorkItemPart | null>(null);
   const [showEditor, setShowEditor] = useState(false);
+  const [startWithNewPart, setStartWithNewPart] = useState(false);
   const openedInitial = useRef(false);
 
   useEffect(() => {
@@ -27,8 +28,7 @@ export default function WorkItemPartsPanel({
   useEffect(() => {
     if (openAddOnMount && !openedInitial.current) {
       openedInitial.current = true;
-      setEditingItem(null);
-      setShowEditor(true);
+      openAddExisting();
     }
   }, [openAddOnMount]);
 
@@ -55,6 +55,18 @@ export default function WorkItemPartsPanel({
     }
   }
 
+  function openAddExisting() {
+    setEditingItem(null);
+    setStartWithNewPart(false);
+    setShowEditor(true);
+  }
+
+  function openNewPart() {
+    setEditingItem(null);
+    setStartWithNewPart(true);
+    setShowEditor(true);
+  }
+
   function handleSaved(saved: WorkItemPart) {
     setItems((current) => {
       const exists = current.some((item) => item.id === saved.id);
@@ -65,6 +77,7 @@ export default function WorkItemPartsPanel({
     });
     setShowEditor(false);
     setEditingItem(null);
+    setStartWithNewPart(false);
     onChanged?.();
   }
 
@@ -72,12 +85,13 @@ export default function WorkItemPartsPanel({
     setItems((current) => current.filter((item) => item.id !== id));
     setShowEditor(false);
     setEditingItem(null);
+    setStartWithNewPart(false);
     onChanged?.();
   }
 
   return (
     <section className="overflow-hidden rounded-xl border border-[#dfe2e6] bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e1e4e8] px-3 py-2.5 sm:px-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e1e4e8] px-3 py-2.5 sm:px-4">
         <div>
           <div className="text-sm font-semibold">Parts for this work item</div>
           <div className="mt-0.5 text-[11px] text-gray-400">
@@ -85,16 +99,23 @@ export default function WorkItemPartsPanel({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setEditingItem(null);
-            setShowEditor(true);
-          }}
-          className="h-9 rounded-lg bg-[#1d2228] px-3 text-xs font-medium text-white hover:bg-black"
-        >
-          + Add Part
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={openAddExisting}
+            className="h-9 rounded-lg border border-[#d8dce1] bg-white px-3 text-xs font-medium hover:bg-gray-50"
+          >
+            + Add Existing
+          </button>
+
+          <button
+            type="button"
+            onClick={openNewPart}
+            className="h-9 rounded-lg bg-[#1d2228] px-3 text-xs font-medium text-white hover:bg-black"
+          >
+            + New Part
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -107,66 +128,108 @@ export default function WorkItemPartsPanel({
         </div>
       ) : (
         <>
-          <div className="hidden grid-cols-[2fr_.65fr_.65fr_1fr_.9fr_.65fr_auto] gap-3 border-b border-[#e7e8ea] bg-[#fafafa] px-4 py-2 text-[10px] font-medium uppercase tracking-wide text-gray-400 lg:grid">
-            <div>Part</div>
-            <div>Needed</div>
-            <div>Used</div>
-            <div>Status</div>
-            <div>Unit Price</div>
-            <div>Billable</div>
-            <div className="text-right">Actions</div>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[760px] border-collapse text-left">
+              <thead className="border-b border-[#e7e8ea] bg-[#fafafa]">
+                <tr>
+                  <Th>Part</Th>
+                  <Th>Needed</Th>
+                  <Th>Used</Th>
+                  <Th>Status</Th>
+                  <Th>Unit Price</Th>
+                  <Th>Billable</Th>
+                  <Th align="right">Action</Th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-[#e7e8ea]">
+                {items.map((item) => (
+                  <tr key={item.id} className="hover:bg-[#fafafa]">
+                    <td className="px-3 py-2.5">
+                      <div className="text-sm font-medium">
+                        {item.part?.name || "Unknown part"}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-gray-400">
+                        {[item.part?.partNumber, item.part?.brand]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
+                      </div>
+                    </td>
+
+                    <Td>{formatQuantity(item.quantityNeeded)}</Td>
+                    <Td>{formatQuantity(item.quantityUsed)}</Td>
+                    <Td>
+                      <StatusPill value={item.status || "Needed"} />
+                    </Td>
+                    <Td>
+                      {item.unitPrice !== undefined && item.unitPrice !== null
+                        ? item.unitPrice.toLocaleString()
+                        : "—"}
+                    </Td>
+                    <Td>{item.billable === false ? "No" : "Yes"}</Td>
+                    <td className="px-3 py-2.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingItem(item);
+                          setStartWithNewPart(false);
+                          setShowEditor(true);
+                        }}
+                        className="rounded-lg border border-[#d8dce1] bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          <div className="divide-y divide-[#e7e8ea]">
+          <div className="divide-y divide-[#e7e8ea] md:hidden">
             {items.map((item) => (
-              <div
-                key={item.id}
-                className="grid gap-2 px-4 py-3 lg:grid-cols-[2fr_.65fr_.65fr_1fr_.9fr_.65fr_auto] lg:items-center lg:gap-3"
-              >
-                <div>
-                  <div className="text-sm font-medium">
-                    {item.part?.name || "Unknown part"}
+              <div key={item.id} className="p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">
+                      {item.part?.name || "Unknown part"}
+                    </div>
+                    <div className="mt-0.5 truncate text-[11px] text-gray-400">
+                      {[item.part?.partNumber, item.part?.brand]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </div>
                   </div>
-                  <div className="mt-0.5 text-xs text-gray-400">
-                    {[item.part?.partNumber, item.part?.brand]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                  </div>
-                </div>
 
-                <GridValue label="Needed">
-                  {formatQuantity(item.quantityNeeded)}
-                </GridValue>
-
-                <GridValue label="Used">
-                  {formatQuantity(item.quantityUsed)}
-                </GridValue>
-
-                <GridValue label="Status">
-                  <StatusPill value={item.status || "Needed"} />
-                </GridValue>
-
-                <GridValue label="Unit Price">
-                  {item.unitPrice !== undefined && item.unitPrice !== null
-                    ? item.unitPrice.toLocaleString()
-                    : "—"}
-                </GridValue>
-
-                <GridValue label="Billable">
-                  {item.billable === false ? "No" : "Yes"}
-                </GridValue>
-
-                <div className="flex justify-end">
                   <button
                     type="button"
                     onClick={() => {
                       setEditingItem(item);
+                      setStartWithNewPart(false);
                       setShowEditor(true);
                     }}
-                    className="rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-xs font-medium hover:bg-gray-50"
+                    className="shrink-0 rounded-lg border border-[#d8dce1] bg-white px-3 py-1.5 text-xs font-medium"
                   >
                     Edit
                   </button>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <MobileValue label="Needed" value={formatQuantity(item.quantityNeeded)} />
+                  <MobileValue label="Used" value={formatQuantity(item.quantityUsed)} />
+                  <MobileValue label="Status" value={item.status || "Needed"} />
+                  <MobileValue
+                    label="Unit Price"
+                    value={
+                      item.unitPrice !== undefined && item.unitPrice !== null
+                        ? item.unitPrice.toLocaleString()
+                        : "—"
+                    }
+                  />
+                  <MobileValue
+                    label="Billable"
+                    value={item.billable === false ? "No" : "Yes"}
+                  />
                 </div>
               </div>
             ))}
@@ -184,9 +247,11 @@ export default function WorkItemPartsPanel({
         <WorkItemPartModal
           workItemId={workItemId}
           item={editingItem}
+          startWithNewPart={startWithNewPart}
           onClose={() => {
             setShowEditor(false);
             setEditingItem(null);
+            setStartWithNewPart(false);
           }}
           onSaved={handleSaved}
           onRemoved={handleRemoved}
@@ -196,19 +261,35 @@ export default function WorkItemPartsPanel({
   );
 }
 
-function GridValue({
-  label,
+function Th({
   children,
+  align = "left",
 }: {
-  label: string;
   children: React.ReactNode;
+  align?: "left" | "right";
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 text-sm lg:block">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400 lg:hidden">
+    <th
+      className={`px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-gray-400 ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({ children }: { children: React.ReactNode }) {
+  return <td className="px-3 py-2.5 text-sm text-gray-700">{children}</td>;
+}
+
+function MobileValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
         {label}
-      </span>
-      <span>{children}</span>
+      </div>
+      <div className="mt-0.5 text-sm text-gray-700">{value}</div>
     </div>
   );
 }

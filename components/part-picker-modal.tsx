@@ -30,9 +30,11 @@ const emptyNewPart: NewPartForm = {
 };
 
 export default function PartPickerModal({
+  startCreate = false,
   onClose,
   onSelect,
 }: {
+  startCreate?: boolean;
   onClose: () => void;
   onSelect: (part: GaragePart) => void;
 }) {
@@ -40,7 +42,7 @@ export default function PartPickerModal({
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(startCreate);
   const [saving, setSaving] = useState(false);
   const [newPart, setNewPart] = useState<NewPartForm>(emptyNewPart);
 
