@@ -54,7 +54,7 @@ export default function AddCustomerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-[80] flex items-stretch justify-center bg-black/50 p-0 sm:items-center sm:p-4">
       <div className="flex h-full w-full flex-col overflow-hidden bg-white sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-2xl sm:shadow-2xl">
         <div className="flex shrink-0 items-center justify-between border-b border-[#e1e4e8] px-4 py-3 sm:px-5 sm:py-4">
           <div>

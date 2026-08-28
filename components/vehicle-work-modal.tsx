@@ -176,13 +176,23 @@ export default function VehicleWorkModal({
   }, [vehicle]);
 
   useEffect(() => {
+    if (vehicleMode === "existing") {
+      if (!selectedVehicleId) {
+        setItems([]);
+        return;
+      }
+
+      void loadVehicleWorkItems(selectedVehicleId);
+      return;
+    }
+
     if (!selectedCustomerId) {
       setItems([]);
       return;
     }
 
     void loadCustomerWorkItems(selectedCustomerId);
-  }, [selectedCustomerId]);
+  }, [vehicleMode, selectedVehicleId, selectedCustomerId]);
 
   useEffect(() => {
     if (!initialWorkItemId) return;
@@ -241,6 +251,32 @@ export default function VehicleWorkModal({
       setError(err instanceof Error ? err.message : "Unable to load customers");
     } finally {
       setLoadingCustomers(false);
+    }
+  }
+
+  async function loadVehicleWorkItems(vehicleId: string) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/vehicles/${encodeURIComponent(vehicleId)}/work-items`,
+        { cache: "no-store" }
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Unable to load vehicle work items");
+      }
+
+      setItems(Array.isArray(result) ? result : []);
+    } catch (err) {
+      console.error("Load vehicle work items error:", err);
+      setError(
+        err instanceof Error ? err.message : "Unable to load vehicle work items"
+      );
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -466,7 +502,12 @@ export default function VehicleWorkModal({
         throw new Error(result?.error || "Unable to save work item");
       }
 
-      await loadCustomerWorkItems(selectedCustomerId);
+      if (vehicleMode === "existing" && selectedVehicleId) {
+        await loadVehicleWorkItems(selectedVehicleId);
+      } else {
+        await loadCustomerWorkItems(selectedCustomerId);
+      }
+
       fillEditForm(result as WorkItem);
       onChanged?.();
     } catch (err) {
@@ -525,12 +566,14 @@ export default function VehicleWorkModal({
 
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                  Customer Work
+                  {vehicleMode === "existing" ? "Vehicle Work" : "Customer Work"}
                 </span>
                 <span className="text-xs text-gray-400">{items.length}</span>
               </div>
 
-              {!selectedCustomerId ? (
+              {vehicleMode === "existing" && !selectedVehicleId ? (
+                <EmptyBox>Select a vehicle to view its work items.</EmptyBox>
+              ) : vehicleMode === "free-text" && !selectedCustomerId ? (
                 <EmptyBox>Select a customer to view work.</EmptyBox>
               ) : loading ? (
                 <div className="py-6 text-center text-xs text-gray-500">
