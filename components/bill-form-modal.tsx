@@ -54,14 +54,25 @@ const emptyForm: BillForm = {
 
 export default function BillFormModal({
   bill,
+  initialType,
+  initialCustomerId,
+  initialNotes,
   onClose,
   onSaved,
 }: {
   bill?: BillSummary | null;
+  initialType?: "Estimate" | "Invoice";
+  initialCustomerId?: string;
+  initialNotes?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState<BillForm>(emptyForm);
+  const [form, setForm] = useState<BillForm>({
+    ...emptyForm,
+    customerId: initialCustomerId || "",
+    type: initialType || "Estimate",
+    notes: initialNotes || "",
+  });
   const [lines, setLines] = useState<BillingLineDraft[]>([]);
   const [customers, setCustomers] = useState<VehicleCustomer[]>([]);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -184,7 +195,7 @@ export default function BillFormModal({
     if (customer && !customerSearch) {
       setCustomerSearch(customer.name);
     }
-  }, [customers, form.customerId]);
+  }, [customers, form.customerId, customerSearch]);
 
   async function loadSources(
     mode: "work" | "job-part" | "part"

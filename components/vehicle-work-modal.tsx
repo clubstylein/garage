@@ -37,6 +37,21 @@ type WorkForm = {
   notes: string;
 };
 
+export type WorkPrefill = {
+  customerId?: string;
+  vehicleId?: string;
+  vehicleText?: string;
+  title?: string;
+  category?: string;
+  priority?: number;
+  status?: string;
+  description?: string;
+  odometer?: number;
+  targetDate?: string;
+  estimatedCost?: number;
+  notes?: string;
+};
+
 const emptyForm: WorkForm = {
   title: "",
   category: "",
@@ -55,6 +70,7 @@ export default function VehicleWorkModal({
   vehicle,
   vehicles = [],
   initialWorkItemId,
+  initialPrefill,
   openAddPartOnLoad = false,
   onClose,
   onChanged,
@@ -62,6 +78,7 @@ export default function VehicleWorkModal({
   vehicle?: Vehicle;
   vehicles?: Vehicle[];
   initialWorkItemId?: string;
+  initialPrefill?: WorkPrefill;
   openAddPartOnLoad?: boolean;
   onClose: () => void;
   onChanged?: () => void;
@@ -94,7 +111,11 @@ export default function VehicleWorkModal({
 
   const [items, setItems] = useState<WorkItem[]>([]);
   const [mode, setMode] = useState<Mode>("create");
-  const [vehicleMode, setVehicleMode] = useState<VehicleMode>("existing");
+  const [vehicleMode, setVehicleMode] = useState<VehicleMode>(
+    initialPrefill?.vehicleText && !initialPrefill?.vehicleId
+      ? "free-text"
+      : "existing"
+  );
   const [activeTab, setActiveTab] = useState<WorkTab>(
     openAddPartOnLoad ? "parts" : "main"
   );
@@ -108,21 +129,57 @@ export default function VehicleWorkModal({
 
   const initialCustomerId = vehicle
     ? String(vehicle.customerId ?? vehicle.customer?.id ?? "")
-    : "";
+    : String(initialPrefill?.customerId || "");
 
   const [selectedCustomerId, setSelectedCustomerId] =
     useState(initialCustomerId);
   const [selectedVehicleId, setSelectedVehicleId] = useState(
-    vehicle?.id ? String(vehicle.id) : ""
+    vehicle?.id
+      ? String(vehicle.id)
+      : String(initialPrefill?.vehicleId || "")
   );
-  const [vehicleText, setVehicleText] = useState("");
+
+  const [vehicleText, setVehicleText] = useState(
+    initialPrefill?.vehicleText || ""
+  );
 
   const [form, setForm] = useState<WorkForm>({
     ...emptyForm,
+
+    title:
+      initialPrefill?.title || "",
+
+    category:
+      initialPrefill?.category || "",
+
+    priority:
+      initialPrefill?.priority
+        ? String(initialPrefill.priority)
+        : "3",
+
+    status:
+      initialPrefill?.status || "Planned",
+
+    work_description:
+      initialPrefill?.description || "",
+
     odometer:
       vehicle?.odometer !== undefined && vehicle?.odometer !== null
         ? String(vehicle.odometer)
+        : initialPrefill?.odometer !== undefined
+          ? String(initialPrefill.odometer)
+          : "",
+
+    target_date:
+      initialPrefill?.targetDate || "",
+
+    estimated_cost:
+      initialPrefill?.estimatedCost !== undefined
+        ? String(initialPrefill.estimatedCost)
         : "",
+
+    notes:
+      initialPrefill?.notes || "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -178,6 +235,40 @@ export default function VehicleWorkModal({
   useEffect(() => {
     void loadCustomers();
   }, []);
+  useEffect(() => {
+    if (!initialPrefill || vehicle || initialWorkItemId) {
+      return;
+    }
+
+    if (initialPrefill.customerId) {
+      setSelectedCustomerId(String(initialPrefill.customerId));
+
+      const customer = customers.find(
+        (item) =>
+          String(item.id) ===
+          String(initialPrefill.customerId)
+      );
+
+      if (customer) {
+        setCustomerQuery(customer.name);
+      }
+    }
+
+    if (initialPrefill.vehicleId) {
+      setVehicleMode("existing");
+      setSelectedVehicleId(String(initialPrefill.vehicleId));
+      setVehicleText("");
+    } else if (initialPrefill.vehicleText) {
+      setVehicleMode("free-text");
+      setSelectedVehicleId("");
+      setVehicleText(initialPrefill.vehicleText);
+    }
+  }, [
+    initialPrefill,
+    vehicle,
+    initialWorkItemId,
+    customers,
+  ]);
 
   useEffect(() => {
     if (!vehicle?.id) return;

@@ -30,6 +30,10 @@ export default function TopNav() {
       return pathname.startsWith("/billing");
     }
 
+    if (section === "ai") {
+      return pathname.startsWith("/ai");
+    }
+
     return false;
   }
 
@@ -106,6 +110,17 @@ export default function TopNav() {
           }
         >
           Billing
+        </NavLink>
+
+        <NavLink
+          href="/ai"
+          active={
+            isActive(
+              "ai"
+            )
+          }
+        >
+          AI
         </NavLink>
       </nav>
     </div>

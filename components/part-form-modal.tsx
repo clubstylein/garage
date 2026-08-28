@@ -42,15 +42,19 @@ function formFromPart(part?: GaragePart | null): FormState {
 
 export default function PartFormModal({
   part,
+  initialData,
   onClose,
   onSaved,
 }: {
   part?: GaragePart | null;
+  initialData?: Partial<GaragePart>;
   onClose: () => void;
   onSaved: (part: GaragePart) => void;
 }) {
   const editing = Boolean(part?.id);
-  const [form, setForm] = useState<FormState>(() => formFromPart(part));
+  const [form, setForm] = useState<FormState>(() =>
+    formFromPart(part ?? (initialData as GaragePart | undefined))
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -58,7 +62,6 @@ export default function PartFormModal({
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
-
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -99,11 +102,9 @@ export default function PartFormModal({
       });
 
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result?.error || "Unable to save part");
       }
-
       onSaved(result as GaragePart);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save part");
@@ -114,47 +115,47 @@ export default function PartFormModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 p-3"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 p-2 sm:p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-[#e1e4e8] px-4 py-3 sm:px-5">
           <div>
             <h2 className="text-lg font-semibold">
               {editing ? "Edit Part" : "Add Part"}
             </h2>
             <p className="mt-0.5 text-xs text-gray-500">
-              Parts master record
+              Garage parts master
             </p>
           </div>
-
           <button
             type="button"
             onClick={onClose}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#d8dce1] text-lg text-gray-500 hover:bg-gray-50"
-            aria-label="Close"
           >
             ×
           </button>
         </div>
 
         <div className="overflow-y-auto p-4 sm:p-5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Part Name" required>
-              <input
-                autoFocus
-                value={form.name}
-                onChange={(event) => patch("name", event.target.value)}
-                className={inputClass}
-              />
-            </Field>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <Field label="Part Name" required>
+                <input
+                  autoFocus
+                  value={form.name}
+                  onChange={(e) => patch("name", e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+            </div>
 
             <Field label="Part Number">
               <input
                 value={form.partNumber}
-                onChange={(event) => patch("partNumber", event.target.value)}
+                onChange={(e) => patch("partNumber", e.target.value)}
                 className={inputClass}
               />
             </Field>
@@ -162,7 +163,7 @@ export default function PartFormModal({
             <Field label="Brand">
               <input
                 value={form.brand}
-                onChange={(event) => patch("brand", event.target.value)}
+                onChange={(e) => patch("brand", e.target.value)}
                 className={inputClass}
               />
             </Field>
@@ -170,7 +171,7 @@ export default function PartFormModal({
             <Field label="Supplier">
               <input
                 value={form.supplier}
-                onChange={(event) => patch("supplier", event.target.value)}
+                onChange={(e) => patch("supplier", e.target.value)}
                 className={inputClass}
               />
             </Field>
@@ -178,19 +179,7 @@ export default function PartFormModal({
             <Field label="Supplier Part Number">
               <input
                 value={form.supplierPartNumber}
-                onChange={(event) =>
-                  patch("supplierPartNumber", event.target.value)
-                }
-                className={inputClass}
-              />
-            </Field>
-
-            <Field label="Currency">
-              <input
-                value={form.currency}
-                onChange={(event) =>
-                  patch("currency", event.target.value.toUpperCase())
-                }
+                onChange={(e) => patch("supplierPartNumber", e.target.value)}
                 className={inputClass}
               />
             </Field>
@@ -201,7 +190,7 @@ export default function PartFormModal({
                 min="0"
                 step="0.01"
                 value={form.costPrice}
-                onChange={(event) => patch("costPrice", event.target.value)}
+                onChange={(e) => patch("costPrice", e.target.value)}
                 className={inputClass}
               />
             </Field>
@@ -212,7 +201,15 @@ export default function PartFormModal({
                 min="0"
                 step="0.01"
                 value={form.sellingPrice}
-                onChange={(event) => patch("sellingPrice", event.target.value)}
+                onChange={(e) => patch("sellingPrice", e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+
+            <Field label="Currency">
+              <input
+                value={form.currency}
+                onChange={(e) => patch("currency", e.target.value.toUpperCase())}
                 className={inputClass}
               />
             </Field>
@@ -222,7 +219,7 @@ export default function PartFormModal({
                 type="number"
                 step="0.001"
                 value={form.stockQuantity}
-                onChange={(event) => patch("stockQuantity", event.target.value)}
+                onChange={(e) => patch("stockQuantity", e.target.value)}
                 className={inputClass}
               />
             </Field>
@@ -232,41 +229,39 @@ export default function PartFormModal({
                 type="number"
                 step="0.001"
                 value={form.reorderLevel}
-                onChange={(event) => patch("reorderLevel", event.target.value)}
+                onChange={(e) => patch("reorderLevel", e.target.value)}
                 className={inputClass}
               />
             </Field>
 
-            <div className="sm:col-span-2">
-              <Field label="Active">
-                <label className="flex h-10 items-center gap-2 rounded-lg border border-[#d8dce1] px-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.active}
-                    onChange={(event) => patch("active", event.target.checked)}
-                  />
-                  Active part
-                </label>
-              </Field>
-            </div>
+            <Field label="Active">
+              <label className="flex h-10 items-center gap-2 rounded-lg border border-[#d8dce1] px-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  onChange={(e) => patch("active", e.target.checked)}
+                />
+                Active part
+              </label>
+            </Field>
 
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 lg:col-span-3">
               <Field label="Description">
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={form.description}
-                  onChange={(event) => patch("description", event.target.value)}
+                  onChange={(e) => patch("description", e.target.value)}
                   className={textareaClass}
                 />
               </Field>
             </div>
 
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 lg:col-span-3">
               <Field label="Notes">
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={form.notes}
-                  onChange={(event) => patch("notes", event.target.value)}
+                  onChange={(e) => patch("notes", e.target.value)}
                   className={textareaClass}
                 />
               </Field>
@@ -284,12 +279,10 @@ export default function PartFormModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={saving}
-            className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
+            className="rounded-lg border border-[#d8dce1] bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50"
           >
             Cancel
           </button>
-
           <button
             type="button"
             onClick={() => void save()}
@@ -306,7 +299,6 @@ export default function PartFormModal({
 
 const inputClass =
   "h-10 w-full rounded-lg border border-[#d8dce1] bg-white px-3 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]";
-
 const textareaClass =
   "w-full rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-sm outline-none focus:border-[#7c828a] focus:ring-1 focus:ring-[#7c828a]";
 

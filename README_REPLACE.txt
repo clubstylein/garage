@@ -1,31 +1,47 @@
-ClubStyle Garage — Billing / Estimates / Invoices
+ClubStyle Garage AI Assistant
 
-This replacement set adds:
-- /billing page matching the Work/Parts look and feel
-- Estimates and Invoices in garage_bills
-- Bill line items in garage_bill_items
-- Customer quick search, detailed customer search and + Add Customer
-- Add customer Work Items to a bill
-- Add Parts already linked to customer Work Items
-- Add any Part from Parts Master
-- Add Manual billing lines
-- Non-billable lines (visible, amount = 0)
-- Decimal quantities
-- Line discount/tax and bill-level discount/tax
-- Responsive mobile billing UI
-- Billing menu item in TopNav
+Adds:
+- /ai page
+- Standard parser and optional AI parser
+- Interpretation preview before any form opens
+- Create Work
+- Create Part
+- Create Customer
+- Create Vehicle
+- Create Estimate
+- Create Invoice
 
-No Directus schema changes are required beyond the garage_bills and garage_bill_items tables already created.
+Replaces/extends existing components only to accept optional prefill values:
+- top-nav.tsx
+- add-customer-modal.tsx
+- part-form-modal.tsx
+- vehicle-work-modal.tsx
+- bill-form-modal.tsx
 
-Required service-token permissions:
-garage_bills: Read, Create, Update
-garage_bill_items: Read, Create, Update, Delete
-garage_customers: Read, Create
-garage_work_items: Read
-garage_work_item_parts: Read
-garage_parts: Read
+New files:
+- app/ai/page.tsx
+- app/api/ai-command/route.ts
+- components/ai-dashboard.tsx
+- components/ai-vehicle-modal.tsx
+- lib/garage-ai.ts
 
-Install from repository root:
-unzip -o ClubStyle_Garage_Billing_Invoicing.zip -d .
-rm ClubStyle_Garage_Billing_Invoicing.zip
-npm run build
+AI setup:
+The project already uses the OpenAI SDK for vehicle lookup.
+The same OPENAI_API_KEY is used.
+Optional env:
+OPENAI_AI_COMMAND_MODEL=gpt-5.6-luna
+
+Behavior:
+- Use AI unchecked -> deterministic standard parser.
+- Use AI checked -> OpenAI structured interpretation.
+- Both modes display the same Interpretation area.
+- Nothing is written to Directus from the interpretation step.
+- The user must click Open ... Form, review the normal popup, then save.
+
+Recommended test commands:
+1. new part order crashbar
+2. clubstyle panamerica create work seating stitching
+3. add customer Rajesh Kumar vip phone 9876543210
+4. create vehicle for clubstyle 2021 Yamaha Tenere 700
+5. create estimate for clubstyle
+6. create invoice for clubstyle
