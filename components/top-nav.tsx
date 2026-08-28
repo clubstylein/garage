@@ -22,6 +22,10 @@ export default function TopNav() {
       return pathname.startsWith("/work");
     }
 
+    if (section === "parts") {
+      return pathname.startsWith("/parts");
+    }
+
     return false;
   }
 
@@ -76,6 +80,17 @@ export default function TopNav() {
           }
         >
           Work
+        </NavLink>
+
+        <NavLink
+          href="/parts"
+          active={
+            isActive(
+              "parts"
+            )
+          }
+        >
+          Parts
         </NavLink>
       </nav>
     </div>

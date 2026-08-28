@@ -82,8 +82,10 @@ export async function GET(request: Request) {
       );
     }
 
+    const includeInactive = url.searchParams.get("include_inactive") === "1";
+
     let parts = (Array.isArray(result.data) ? result.data : [])
-      .filter((item: any) => item.active !== false)
+      .filter((item: any) => includeInactive || item.active !== false)
       .map(mapPart);
 
     if (search) {
@@ -186,5 +188,70 @@ export async function POST(request: Request) {
       { error: "Unable to create part" },
       { status: 500 }
     );
+  }
+}
+
+
+export async function PATCH(request: Request) {
+  try {
+    if (!DIRECTUS_URL || !DIRECTUS_TOKEN) {
+      return NextResponse.json(
+        { error: "Directus is not configured" },
+        { status: 500 }
+      );
+    }
+
+    const body = await request.json();
+    const id = optionalString(body.id);
+    if (!id) {
+      return NextResponse.json({ error: "Part ID is required" }, { status: 400 });
+    }
+
+    const payload = {
+      part_number: optionalString(body.part_number ?? body.partNumber),
+      name: optionalString(body.name),
+      brand: optionalString(body.brand),
+      description: optionalString(body.description),
+      cost_price: optionalNumber(body.cost_price ?? body.costPrice),
+      selling_price: optionalNumber(body.selling_price ?? body.sellingPrice),
+      currency: optionalString(body.currency) ?? "INR",
+      supplier: optionalString(body.supplier),
+      supplier_part_number: optionalString(
+        body.supplier_part_number ?? body.supplierPartNumber
+      ),
+      stock_quantity: optionalNumber(
+        body.stock_quantity ?? body.stockQuantity
+      ) ?? 0,
+      reorder_level: optionalNumber(body.reorder_level ?? body.reorderLevel),
+      notes: optionalString(body.notes),
+      active: body.active !== false,
+    };
+
+    if (!payload.name) {
+      return NextResponse.json({ error: "Part name is required" }, { status: 400 });
+    }
+
+    const response = await fetch(
+      `${DIRECTUS_URL}/items/garage_parts/${encodeURIComponent(id)}?fields=id,part_number,name,brand,description,cost_price,selling_price,currency,supplier,supplier_part_number,stock_quantity,reorder_level,notes,active`,
+      {
+        method: "PATCH",
+        headers: jsonHeaders(),
+        body: JSON.stringify(payload),
+        cache: "no-store",
+      }
+    );
+
+    const result = await response.json();
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: result?.errors?.[0]?.message || "Unable to update part" },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(mapPart(result.data));
+  } catch (error) {
+    console.error("Update garage part error:", error);
+    return NextResponse.json({ error: "Unable to update part" }, { status: 500 });
   }
 }

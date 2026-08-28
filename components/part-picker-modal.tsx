@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GaragePart } from "@/lib/mock-data";
 
 type NewPartForm = {
@@ -100,8 +100,7 @@ export default function PartPickerModal({
       .slice(0, 50);
   }, [parts, search]);
 
-  async function createPart(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function createPart() {
 
     if (!newPart.name.trim()) {
       setError("Part name is required.");
@@ -244,7 +243,7 @@ export default function PartPickerModal({
               </div>
             </>
           ) : (
-            <form onSubmit={createPart}>
+            <div>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="font-semibold">Create Part</h3>
@@ -419,14 +418,15 @@ export default function PartPickerModal({
                 </button>
 
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => void createPart()}
                   disabled={saving}
                   className="rounded-lg bg-[#1d2228] px-5 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Create & Select"}
                 </button>
               </div>
-            </form>
+            </div>
           )}
 
           {error && (

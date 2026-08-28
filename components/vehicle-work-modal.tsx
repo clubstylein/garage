@@ -54,12 +54,14 @@ export default function VehicleWorkModal({
   vehicle,
   vehicles = [],
   initialWorkItemId,
+  openAddPartOnLoad = false,
   onClose,
   onChanged,
 }: {
   vehicle?: Vehicle;
   vehicles?: Vehicle[];
   initialWorkItemId?: string;
+  openAddPartOnLoad?: boolean;
   onClose: () => void;
   onChanged?: () => void;
 }) {
@@ -994,6 +996,7 @@ export default function VehicleWorkModal({
                     key={String(form.id)}
                     workItemId={String(form.id)}
                     onChanged={onChanged}
+                    openAddOnMount={openAddPartOnLoad}
                   />
                 ) : (
                   <div className="mt-4 rounded-xl border border-dashed border-[#d8dce1] bg-white px-4 py-3 text-xs text-gray-500">

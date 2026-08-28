@@ -9,6 +9,7 @@ import VehicleWorkModal from "@/components/vehicle-work-modal";
 type WorkModalState = {
   vehicle?: Vehicle;
   workItemId?: string;
+  openAddPart?: boolean;
 };
 
 export default function WorkDashboard({
@@ -219,6 +220,18 @@ export default function WorkDashboard({
     setWorkModal({
       vehicle,
       workItemId: item.id,
+    });
+  }
+
+  function openAddPart(item: WorkItem) {
+    const vehicle = item.vehicleId
+      ? vehicleMap.get(String(item.vehicleId))
+      : undefined;
+
+    setWorkModal({
+      vehicle,
+      workItemId: item.id,
+      openAddPart: true,
     });
   }
 
@@ -515,15 +528,13 @@ export default function WorkDashboard({
                               Edit
                             </button>
 
-                            {vehicle && (
-                              <button
-                                type="button"
-                                onClick={() => setWorkModal({ vehicle })}
-                                className="rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-xs font-medium hover:bg-gray-50"
-                              >
-                                + Work
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => openAddPart(item)}
+                              className="rounded-lg border border-[#d8dce1] bg-white px-3 py-2 text-xs font-medium hover:bg-gray-50"
+                            >
+                              + Part
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -550,6 +561,7 @@ export default function WorkDashboard({
           vehicle={workModal.vehicle}
           vehicles={workVehicles}
           initialWorkItemId={workModal.workItemId}
+          openAddPartOnLoad={workModal.openAddPart === true}
           onChanged={() => router.refresh()}
           onClose={() => {
             setWorkModal(null);
